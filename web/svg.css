@@ -1,0 +1,52 @@
+.circle {
+  fill: #977d5a;
+  stroke-width: 4;
+  transition: fill 150ms;
+}
+
+.circle.path {
+  fill: #d6b17d;
+}
+
+.circle.path:hover {
+  fill: #eecea1;
+  cursor: pointer;
+}
+
+.circle.red {
+  fill: #e50000;
+}
+
+.circle.green {
+  fill: #35cc35;
+}
+
+.circle.bordered.red {
+  stroke: #ffafaf;
+}
+
+.circle.bordered.green {
+  stroke: #cfffcf;
+}
+
+.board-bg {
+  fill: #4b310c;
+}
+
+.red-turn .bordered {
+  stroke: #cfffcf;
+}
+
+.green-turn .bordered {
+  stroke: #ffafaf;
+}
+
+.red-turn .red:hover {
+  fill: #e94141;
+  cursor: pointer;
+}
+
+.green-turn .green:hover {
+  fill: #4b9e4b;
+  cursor: pointer;
+}

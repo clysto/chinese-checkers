@@ -1,0 +1,57 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background-color: #d8efff;
+}
+#app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px 0;
+}
+.game-area {
+  background-color: #e8b061;
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  overflow: hidden;
+}
+.board-wrapper {
+  flex: 1;
+}
+.control-area {
+  width: 300px;
+  padding: 10px;
+  background-color: #99ccee;
+}
+.board {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+@media screen and (max-width: 850px) {
+  #app {
+    flex-direction: column;
+    padding: 0;
+    max-width: 600px;
+  }
+  .control-area {
+    width: 100%;
+  }
+  .fake-circles {
+    display: none;
+  }
+  .board-bg.big {
+    display: none;
+  }
+  .board {
+    scale: 130%;
+  }
+}
