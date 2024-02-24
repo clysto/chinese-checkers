@@ -1,15 +1,19 @@
 #include <constants.hpp>
 #include <game.hpp>
 #include <limits>
+#include <map>
 #include <string>
 
 inline int bitlen_u128(uint128_t u) {
-  int len = 0;
-  while (u) {
-    u >>= 1;
-    len++;
+  if (u == 0) {
+    return 0;
   }
-  return len;
+  uint64_t upper = u >> 64;
+  if (upper) {
+    return 128 - __builtin_clzll(upper);
+  } else {
+    return 64 - __builtin_clzll((uint64_t)u);
+  }
 }
 
 #define SCAN_REVERSE_START(x, v) \
@@ -175,6 +179,21 @@ double GameState::evaluate(int maxiumColor) {
   return maxiumColor == Color::RED ? redScore - 0.7 * greenScore : greenScore - 0.7 * redScore;
 }
 
+uint64_t GameState::hash() {
+  uint64_t hash = 0;
+  for (int i = 0; i < 81; i++) {
+    if (board[RED] >> i & 1) {
+      hash ^= ZOBRIST_TABLE[i][RED];
+    } else if (board[GREEN] >> i & 1) {
+      hash ^= ZOBRIST_TABLE[i][GREEN];
+    }
+  }
+  if (turn == GREEN) {
+    hash ^= 0xc503204d9e521ac5ULL;
+  }
+  return hash;
+}
+
 bool GameState::isGameOver() {
   bool redWin = true;
   bool greenWin = true;
@@ -205,7 +224,8 @@ Move GameState::searchBestMove(int depth) {
 
 std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor) {
   if (gameState.isGameOver() || depth == 0) {
-    return {{Move{-1, -1}}, (depth + 1) * gameState.evaluate(maxiumColor)};
+    double value = (depth + 1) * gameState.evaluate(maxiumColor);
+    return {{Move{-1, -1}}, value};
   }
   double maxEval = -std::numeric_limits<double>::infinity();
   Move bestMove;
@@ -227,7 +247,8 @@ std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, 
 
 std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor) {
   if (gameState.isGameOver() || depth == 0) {
-    return {Move{-1, -1}, (depth + 1) * gameState.evaluate(maxiumColor)};
+    double value = (depth + 1) * gameState.evaluate(maxiumColor);
+    return {{Move{-1, -1}}, value};
   }
   double minEval = std::numeric_limits<double>::infinity();
   Move bestMove;

@@ -10,7 +10,7 @@ target_link_libraries(chinesecheckers embind)
 target_include_directories(chinesecheckers PRIVATE ${CMAKE_SOURCE_DIR}/src)
 set_target_properties(chinesecheckers PROPERTIES
     SUFFIX ".js"
-    LINK_FLAGS "-s STACK_SIZE=16MB -s INITIAL_MEMORY=32MB"
+    LINK_FLAGS "-s STACK_SIZE=16MB -s INITIAL_MEMORY=32MB -s WASM_BIGINT"
 )
 
 add_custom_command(TARGET chinesecheckers POST_BUILD
