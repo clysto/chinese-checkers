@@ -7,6 +7,7 @@ function App() {
   let srcPiece = -1;
   let windowWidth = window.innerWidth;
   let myColor = RED;
+  let showNumber = false;
 
   const worker = new Worker('sw.js');
 
@@ -55,6 +56,10 @@ function App() {
     navigator.clipboard.writeText(state);
   };
 
+  const handleShowNumber = (event) => {
+    showNumber = event.target.checked;
+  };
+
   window.addEventListener('resize', () => {
     windowWidth = window.innerWidth;
     m.redraw();
@@ -87,16 +92,18 @@ function App() {
                 d: FAKE_CIRCLES,
               }),
               (myColor === RED ? PIECE_POSITIONS : PIECE_POSITIONS_REVERSE).map(([cx, cy], p) =>
-                m('circle', {
-                  cx,
-                  cy,
-                  r: 19,
-                  class: classNames('circle', pieceClasses[gameState.board[p]], {
-                    bordered: srcPiece === p || lastMove?.includes(p),
-                    path: moves[srcPiece] && moves[srcPiece].has(p),
+                m('g', { class: 'circle-group', onclick: () => handlePieceClick(p) }, [
+                  m('circle', {
+                    cx,
+                    cy,
+                    r: 19,
+                    class: classNames('circle', pieceClasses[gameState.board[p]], {
+                      bordered: srcPiece === p || lastMove?.includes(p),
+                      path: moves[srcPiece] && moves[srcPiece].has(p),
+                    }),
                   }),
-                  onclick: () => handlePieceClick(p),
-                })
+                  showNumber && m('text', { x: cx, y: cy, class: 'piece-label' }, p),
+                ])
               ),
             ]
           ),
@@ -109,6 +116,8 @@ function App() {
           ]),
           m('button', { onclick: handleRestart }, '新的游戏'),
           m('button', { onclick: handleCopy }, '复制棋盘'),
+          m('label', '显示坐标'),
+          m('input', { type: 'checkbox', onclick: handleShowNumber }),
         ]),
       ]);
     },

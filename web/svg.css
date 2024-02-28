@@ -8,9 +8,8 @@
   fill: #d6b17d;
 }
 
-.circle.path:hover {
+.circle-group:hover .circle.path {
   fill: #eecea1;
-  cursor: pointer;
 }
 
 .circle.red {
@@ -41,12 +40,19 @@
   stroke: #ffafaf;
 }
 
-.red-turn .red:hover {
+.red-turn .circle-group:hover .red {
   fill: #e94141;
-  cursor: pointer;
 }
 
-.green-turn .green:hover {
+.green-turn .circle-group:hover .green {
   fill: #4b9e4b;
-  cursor: pointer;
+}
+
+.piece-label {
+  text-anchor: middle;
+  dominant-baseline: central;
+  font-family: Menlo, Monaco, Consolas, 'Andale Mono', 'lucida console', 'Courier New', monospace;
+  fill: rgb(0 0 0 / 40%);
+  user-select: none;
+  font-weight: bold;
 }

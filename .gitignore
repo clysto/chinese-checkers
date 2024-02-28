@@ -3,3 +3,4 @@
 /web/chinesecheckers.js
 /web/chinesecheckers.wasm
 .vscode
+.cache
