@@ -4,7 +4,6 @@
 #include <constants.hpp>
 #include <game.hpp>
 #include <limits>
-#include <map>
 #include <string>
 
 inline int bitlen_u128(uint128_t u) {
@@ -29,21 +28,12 @@ inline int bitlen_u128(uint128_t u) {
 
 cache::lru_cache<uint64_t, TranspositionTableEntry> HASH_TABLE(1 << 20);
 
-GameState::GameState() {
-  board[RED] = INITIAL_RED;
-  board[GREEN] = INITIAL_GREEN;
-  turn = RED;
-  round = 1;
-}
+GameState::GameState() : board{0, INITIAL_RED, INITIAL_GREEN}, turn(RED), round(1) {}
 
-GameState::GameState(GameState const &gameState) {
-  board[RED] = gameState.board[RED];
-  board[GREEN] = gameState.board[GREEN];
-  turn = gameState.turn;
-  round = gameState.round;
-}
+GameState::GameState(GameState const &gameState)
+    : board{0, gameState.board[RED], gameState.board[GREEN]}, turn(gameState.turn), round(gameState.round) {}
 
-GameState::GameState(std::string state) {
+GameState::GameState(const std::string &state) : board{0, 0, 0}, turn(RED), round(10) {
   board[RED] = 0;
   board[GREEN] = 0;
   int p = 0;
@@ -224,7 +214,7 @@ bool GameState::isGameOver() {
 Move GameState::searchBestMove(int depth) {
   if (round <= 4) {
     return OPENINGS[turn].at(board[turn]);
-  };
+  }
   auto deadline = std::chrono::high_resolution_clock::now() + std::chrono::seconds(10);
   auto result = maxValue(*this, depth, -std::numeric_limits<double>::infinity(),
                          std::numeric_limits<double>::infinity(), turn, deadline);
@@ -235,7 +225,7 @@ Move GameState::searchBestMove(int depth) {
 Move GameState::searchBestMoveWithTimeLimit(int timeLimit) {
   if (round <= 4) {
     return OPENINGS[turn].at(board[turn]);
-  };
+  }
   int depth = 1;
   Move bestMove = {-1, -1};
   double maxEval = -std::numeric_limits<double>::infinity();
@@ -278,7 +268,7 @@ std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, 
   if (gameState.isGameOver() || depth == 0) {
     return {{Move{-1, -1}}, gameState.evaluate(maxiumColor)};
   }
-  Move bestMove;
+  Move bestMove = {-1, -1};
   for (Move move : gameState.legalMoves()) {
     GameState newState(gameState);
     newState.applyMove(move);
@@ -318,7 +308,7 @@ std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, 
   if (gameState.isGameOver() || depth == 0) {
     return {{Move{-1, -1}}, gameState.evaluate(maxiumColor)};
   }
-  Move bestMove;
+  Move bestMove = {-1, -1};
   for (Move move : gameState.legalMoves()) {
     GameState newState(gameState);
     newState.applyMove(move);

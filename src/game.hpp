@@ -80,7 +80,7 @@ class GameState {
  public:
   GameState();
   GameState(GameState const &gameState);
-  GameState(std::string state);
+  explicit GameState(const std::string& state);
   std::vector<int> getBoard();
   Color getTurn() const;
   std::vector<Move> legalMoves(Color color = EMPTY);
