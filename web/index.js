@@ -9,15 +9,15 @@ function App() {
   let myColor = RED;
   let showNumber = false;
 
-  const worker = new Worker('sw.js');
+  // const worker = new Worker('sw.js');
 
-  worker.onmessage = (event) => {
-    const { src, dst } = event.data;
-    gameState.applyMove(src, dst);
-    lastMove = [src, dst];
-    moves = gameState.legalMoves();
-    m.redraw();
-  };
+  // worker.onmessage = (event) => {
+  //   const { src, dst } = event.data;
+  //   gameState.applyMove(src, dst);
+  //   lastMove = [src, dst];
+  //   moves = gameState.legalMoves();
+  //   m.redraw();
+  // };
 
   // Event handlers
   const handlePieceClick = (p) => {
@@ -36,7 +36,25 @@ function App() {
   };
 
   const computerMove = () => {
-    worker.postMessage(gameState.toString());
+    // worker.postMessage(gameState.toString());
+    fetch('http://localhost:1234/timelimitsearch?' + new URLSearchParams({ state: gameState.toString(), time: 5000 }))
+      .then((res) => res.text())
+      .then((data) => {
+        const [src, dst] = data.split(' ').map(Number);
+        gameState.applyMove(src, dst);
+        lastMove = [src, dst];
+        moves = gameState.legalMoves();
+        m.redraw();
+      });
+    // fetch('http://localhost:1234/searchbestmove?' + new URLSearchParams({ state: gameState.toString(), depth: 7 }))
+    //   .then((res) => res.text())
+    //   .then((data) => {
+    //     const [src, dst] = data.split(' ').map(Number);
+    //     gameState.applyMove(src, dst);
+    //     lastMove = [src, dst];
+    //     moves = gameState.legalMoves();
+    //     m.redraw();
+    //   });
   };
 
   const handleRestart = () => {

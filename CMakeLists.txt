@@ -5,8 +5,11 @@ project(ChineseCheckers VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+
+find_package(spdlog REQUIRED)
+
 add_executable(chinesecheckers src/wasm.cpp src/game.cpp src/game.hpp)
-target_link_libraries(chinesecheckers embind)
+target_link_libraries(chinesecheckers embind spdlog::spdlog)
 target_include_directories(chinesecheckers PRIVATE ${CMAKE_SOURCE_DIR}/src)
 set_target_properties(chinesecheckers PROPERTIES
     SUFFIX ".js"
@@ -21,4 +24,5 @@ add_custom_command(TARGET chinesecheckers POST_BUILD
 )
 
 add_executable(chinesecheckers_server src/server.cpp src/httplib.h src/game.cpp src/game.hpp)
+target_link_libraries(chinesecheckers_server spdlog::spdlog)
 target_include_directories(chinesecheckers_server PRIVATE ${CMAKE_SOURCE_DIR}/src)

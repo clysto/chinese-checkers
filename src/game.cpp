@@ -1,8 +1,13 @@
+#include <spdlog/spdlog.h>
+
+#include <cache.hpp>
 #include <constants.hpp>
 #include <game.hpp>
 #include <limits>
 #include <map>
 #include <string>
+
+cache::lru_cache<uint64_t, TranspositionTableEntry> HASH_TABLE(1 << 20);
 
 inline int bitlen_u128(uint128_t u) {
   if (u == 0) {
@@ -35,6 +40,7 @@ GameState::GameState(GameState const &gameState) {
   board[RED] = gameState.board[RED];
   board[GREEN] = gameState.board[GREEN];
   turn = gameState.turn;
+  round = gameState.round;
 }
 
 GameState::GameState(std::string state) {
@@ -75,7 +81,6 @@ end:
 std::string GameState::toString() {
   std::string result;
   for (int i = 0; i < 81; i++) {
-    uint128_t mask = (uint128_t)1 << i;
     if (board[RED] >> i & 1) {
       result += "1";
     } else if (board[GREEN] >> i & 1) {
@@ -95,7 +100,6 @@ std::string GameState::toString() {
 std::vector<int> GameState::getBoard() {
   std::vector<int> result;
   for (int i = 0; i < 81; i++) {
-    uint128_t mask = (uint128_t)1 << i;
     if (board[RED] >> i & 1) {
       result.push_back(RED);
     } else if (board[GREEN] >> i & 1) {
@@ -216,54 +220,104 @@ Move GameState::searchBestMove(int depth) {
   if (round <= 4) {
     return OPENINGS[turn].at(board[turn]);
   };
-  Move besetMove =
+  Move bestMove =
       maxValue(*this, depth, -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), turn)
           .first;
-  return besetMove;
+  return bestMove;
+}
+
+Move GameState::searchBestMoveWithTimeLimit(double timeLimit) {
+  if (round <= 4) {
+    return OPENINGS[turn].at(board[turn]);
+  };
+  int depth = 4;
+  Move bestMove;
+  auto start = std::chrono::high_resolution_clock::now();
+  while (true) {
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    if (duration > timeLimit) {
+      break;
+    }
+    bestMove =
+        maxValue(*this, depth, -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), turn)
+            .first;
+    depth++;
+  }
+  spdlog::info("actual search depth: {}", depth);
+  return bestMove;
 }
 
 std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor) {
+  uint64_t hash = gameState.hash();
+  if (HASH_TABLE.exists(hash)) {
+    auto result = HASH_TABLE.get(hash);
+    if (result.depth >= depth && result.maxiumColor == maxiumColor) {
+      if (result.flag == HASH_EXACT) {
+        return {result.bestMove, result.value};
+      } else if (result.flag == HASH_ALPHA && result.value <= alpha) {
+        return {result.bestMove, alpha};
+      } else if (result.flag == HASH_BETA && result.value >= beta) {
+        return {result.bestMove, beta};
+      }
+    }
+  }
+
   if (gameState.isGameOver() || depth == 0) {
     double value = (depth + 1) * gameState.evaluate(maxiumColor);
     return {{Move{-1, -1}}, value};
   }
-  double maxEval = -std::numeric_limits<double>::infinity();
   Move bestMove;
   for (Move move : gameState.legalMoves()) {
     GameState newState(gameState);
     newState.applyMove(move);
     double eval = minValue(newState, depth - 1, alpha, beta, maxiumColor).second;
-    if (eval > maxEval) {
-      maxEval = eval;
+    if (eval > alpha) {
+      alpha = eval;
       bestMove = move;
     }
-    alpha = std::max(alpha, eval);
     if (beta <= alpha) {
-      break;  // Beta cut-off
+      HASH_TABLE.put(hash, {beta, depth, HASH_BETA, bestMove, maxiumColor});
+      return {bestMove, beta};  // Beta cut-off
     }
   }
-  return {bestMove, maxEval};
+  HASH_TABLE.put(hash, {alpha, depth, HASH_EXACT, bestMove, maxiumColor});
+  return {bestMove, alpha};
 }
 
 std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor) {
+  uint64_t hash = gameState.hash();
+  if (HASH_TABLE.exists(hash)) {
+    auto result = HASH_TABLE.get(hash);
+    if (result.depth >= depth && result.maxiumColor == maxiumColor) {
+      if (result.flag == HASH_EXACT) {
+        return {result.bestMove, result.value};
+      } else if (result.flag == HASH_ALPHA && result.value <= alpha) {
+        return {result.bestMove, alpha};
+      } else if (result.flag == HASH_BETA && result.value >= beta) {
+        return {result.bestMove, beta};
+      }
+    }
+  }
+
   if (gameState.isGameOver() || depth == 0) {
     double value = (depth + 1) * gameState.evaluate(maxiumColor);
     return {{Move{-1, -1}}, value};
   }
-  double minEval = std::numeric_limits<double>::infinity();
   Move bestMove;
   for (Move move : gameState.legalMoves()) {
     GameState newState(gameState);
     newState.applyMove(move);
     double eval = maxValue(newState, depth - 1, alpha, beta, maxiumColor).second;
-    if (eval < minEval) {
-      minEval = eval;
+    if (eval < beta) {
+      beta = eval;
       bestMove = move;
     }
-    beta = std::min(beta, eval);
     if (beta <= alpha) {
-      break;  // Alpha cut-off
+      HASH_TABLE.put(hash, {alpha, depth, HASH_ALPHA, bestMove, maxiumColor});
+      return {bestMove, alpha};  // Alpha cut-off
     }
   }
-  return {bestMove, minEval};
+  HASH_TABLE.put(hash, {beta, depth, HASH_EXACT, bestMove, maxiumColor});
+  return {bestMove, beta};
 }

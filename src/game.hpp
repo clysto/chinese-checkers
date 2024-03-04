@@ -11,6 +11,12 @@ enum Color {
   GREEN,
 };
 
+enum HashFlag {
+  HASH_EXACT,
+  HASH_ALPHA,
+  HASH_BETA,
+};
+
 struct Move {
   int src;
   int dst;
@@ -19,7 +25,9 @@ struct Move {
 struct TranspositionTableEntry {
   double value;
   int depth;
+  HashFlag flag;
   Move bestMove;
+  int maxiumColor;
 };
 
 const uint128_t BOARD_MASK = ((uint128_t)0x1ffff << 64) | 0xffffffffffffffff;
@@ -81,6 +89,7 @@ class GameState {
   double evaluate(int maxiumColor);
   bool isGameOver();
   Move searchBestMove(int depth);
+  Move searchBestMoveWithTimeLimit(double timeLimit);
   std::string toString();
   uint64_t hash();
 };
