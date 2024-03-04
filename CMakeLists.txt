@@ -26,3 +26,7 @@ add_custom_command(TARGET chinesecheckers POST_BUILD
 add_executable(chinesecheckers_server src/server.cpp src/httplib.h src/game.cpp src/game.hpp)
 target_link_libraries(chinesecheckers_server spdlog::spdlog)
 target_include_directories(chinesecheckers_server PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+add_executable(chinesecheckers_cli src/cli.cpp src/game.cpp src/game.hpp)
+target_link_libraries(chinesecheckers_cli spdlog::spdlog)
+target_include_directories(chinesecheckers_cli PRIVATE ${CMAKE_SOURCE_DIR}/src)

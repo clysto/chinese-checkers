@@ -113,9 +113,12 @@ std::vector<int> GameState::getBoard() {
 
 Color GameState::getTurn() const { return turn; }
 
-std::vector<Move> GameState::legalMoves() {
+std::vector<Move> GameState::legalMoves(Color color) {
+  if (color == EMPTY) {
+    color = turn;
+  }
   std::vector<Move> moves;
-  uint128_t from = board[turn];
+  uint128_t from = board[color];
   SCAN_REVERSE_START(from, src)
   uint128_t to = ADJ_POSITIONS[pos_src] & ~(board[RED] | board[GREEN]);
   jumpMoves(pos_src, to);
@@ -124,8 +127,8 @@ std::vector<Move> GameState::legalMoves() {
   SCAN_REVERSE_END(to, dst)
   SCAN_REVERSE_END(from, src)
   // sort moves
-  std::sort(moves.begin(), moves.end(), [this](Move a, Move b) {
-    return turn == RED
+  std::sort(moves.begin(), moves.end(), [color](Move a, Move b) {
+    return color == RED
                ? PIECE_DISTANCES[a.dst] - PIECE_DISTANCES[a.src] < PIECE_DISTANCES[b.dst] - PIECE_DISTANCES[b.src]
                : PIECE_DISTANCES[a.dst] - PIECE_DISTANCES[a.src] > PIECE_DISTANCES[b.dst] - PIECE_DISTANCES[b.src];
   });
@@ -172,13 +175,15 @@ double GameState::evaluate(int maxiumColor) {
   }
   greenScore += PIECE_SCORE_TABLE[pos_src];
   SCAN_REVERSE_END(green, src)
-  redScore -= pow(2, 5 - lastRed);
-  greenScore -= pow(2, 5 - lastGreen);
+  redScore -= pow(2, 4 - lastRed);
+  greenScore -= pow(2, 4 - lastGreen);
   if (lastRed == 13) {
-    redScore += 10000;
+    redScore = 10000;
+    greenScore = 0;
   }
   if (lastGreen == 13) {
-    greenScore += 10000;
+    greenScore = 10000;
+    redScore = 0;
   }
   return maxiumColor == Color::RED ? redScore - 0.7 * greenScore : greenScore - 0.7 * redScore;
 }
@@ -231,19 +236,24 @@ Move GameState::searchBestMoveWithTimeLimit(int timeLimit) {
   if (round <= 4) {
     return OPENINGS[turn].at(board[turn]);
   };
-  int depth = 4;
+  int depth = 1;
   Move bestMove = {-1, -1};
   double maxEval = -std::numeric_limits<double>::infinity();
   auto deadline = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(timeLimit);
   while (true) {
     auto result = maxValue(*this, depth, -std::numeric_limits<double>::infinity(),
                            std::numeric_limits<double>::infinity(), turn, deadline);
-    maxEval = result.second;
-    bestMove = result.first;
-    depth++;
+    if (result.second > maxEval) {
+      maxEval = result.second;
+      bestMove = result.first;
+    }
+    if (maxEval > 9999) {
+      break;
+    }
     if (std::chrono::high_resolution_clock::now() >= deadline) {
       break;
     }
+    depth++;
   }
   spdlog::info("evaluated value: {}", maxEval);
   spdlog::info("actual search depth: {}", depth);
@@ -266,8 +276,7 @@ std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, 
   }
 
   if (gameState.isGameOver() || depth == 0) {
-    double value = (depth + 1) * gameState.evaluate(maxiumColor);
-    return {{Move{-1, -1}}, value};
+    return {{Move{-1, -1}}, gameState.evaluate(maxiumColor)};
   }
   Move bestMove;
   for (Move move : gameState.legalMoves()) {
@@ -307,8 +316,7 @@ std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, 
   }
 
   if (gameState.isGameOver() || depth == 0) {
-    double value = (depth + 1) * gameState.evaluate(maxiumColor);
-    return {{Move{-1, -1}}, value};
+    return {{Move{-1, -1}}, gameState.evaluate(maxiumColor)};
   }
   Move bestMove;
   for (Move move : gameState.legalMoves()) {
