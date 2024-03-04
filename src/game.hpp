@@ -89,10 +89,12 @@ class GameState {
   double evaluate(int maxiumColor);
   bool isGameOver();
   Move searchBestMove(int depth);
-  Move searchBestMoveWithTimeLimit(double timeLimit);
+  Move searchBestMoveWithTimeLimit(int timeLimit);
   std::string toString();
   uint64_t hash();
 };
 
-std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor);
-std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor);
+std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor,
+                                 std::chrono::time_point<std::chrono::high_resolution_clock> deadline);
+std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor,
+                                 std::chrono::time_point<std::chrono::high_resolution_clock> deadline);

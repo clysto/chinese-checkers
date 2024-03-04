@@ -7,8 +7,6 @@
 #include <map>
 #include <string>
 
-cache::lru_cache<uint64_t, TranspositionTableEntry> HASH_TABLE(1 << 20);
-
 inline int bitlen_u128(uint128_t u) {
   if (u == 0) {
     return 0;
@@ -28,6 +26,8 @@ inline int bitlen_u128(uint128_t u) {
 #define SCAN_REVERSE_END(x, v)    \
   x ^= ((uint128_t)1 << pos_##v); \
   }
+
+cache::lru_cache<uint64_t, TranspositionTableEntry> HASH_TABLE(1 << 20);
 
 GameState::GameState() {
   board[RED] = INITIAL_RED;
@@ -220,35 +220,40 @@ Move GameState::searchBestMove(int depth) {
   if (round <= 4) {
     return OPENINGS[turn].at(board[turn]);
   };
-  Move bestMove =
-      maxValue(*this, depth, -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), turn)
-          .first;
+  auto deadline = std::chrono::high_resolution_clock::now() + std::chrono::seconds(10);
+  Move bestMove = maxValue(*this, depth, -std::numeric_limits<double>::infinity(),
+                           std::numeric_limits<double>::infinity(), turn, deadline)
+                      .first;
   return bestMove;
 }
 
-Move GameState::searchBestMoveWithTimeLimit(double timeLimit) {
+Move GameState::searchBestMoveWithTimeLimit(int timeLimit) {
   if (round <= 4) {
     return OPENINGS[turn].at(board[turn]);
   };
   int depth = 4;
   Move bestMove;
-  auto start = std::chrono::high_resolution_clock::now();
+  double maxEval = -std::numeric_limits<double>::infinity();
+  auto deadline = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(timeLimit);
   while (true) {
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    if (duration > timeLimit) {
+    auto result = maxValue(*this, depth, -std::numeric_limits<double>::infinity(),
+                           std::numeric_limits<double>::infinity(), turn, deadline);
+    if (result.second > maxEval) {
+      maxEval = result.second;
+      bestMove = result.first;
+    }
+    depth++;
+    if (std::chrono::high_resolution_clock::now() >= deadline) {
       break;
     }
-    bestMove =
-        maxValue(*this, depth, -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), turn)
-            .first;
-    depth++;
   }
   spdlog::info("actual search depth: {}", depth);
   return bestMove;
 }
 
-std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor) {
+std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor,
+                                 std::chrono::time_point<std::chrono::high_resolution_clock> deadline) {
+  // 查询置换表
   uint64_t hash = gameState.hash();
   if (HASH_TABLE.exists(hash)) {
     auto result = HASH_TABLE.get(hash);
@@ -269,9 +274,13 @@ std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, 
   }
   Move bestMove;
   for (Move move : gameState.legalMoves()) {
+    // 超时检测
+    if (std::chrono::high_resolution_clock::now() >= deadline) {
+      break;
+    }
     GameState newState(gameState);
     newState.applyMove(move);
-    double eval = minValue(newState, depth - 1, alpha, beta, maxiumColor).second;
+    double eval = minValue(newState, depth - 1, alpha, beta, maxiumColor, deadline).second;
     if (eval > alpha) {
       alpha = eval;
       bestMove = move;
@@ -285,7 +294,9 @@ std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, 
   return {bestMove, alpha};
 }
 
-std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor) {
+std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor,
+                                 std::chrono::time_point<std::chrono::high_resolution_clock> deadline) {
+  // 查询置换表
   uint64_t hash = gameState.hash();
   if (HASH_TABLE.exists(hash)) {
     auto result = HASH_TABLE.get(hash);
@@ -306,9 +317,13 @@ std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, 
   }
   Move bestMove;
   for (Move move : gameState.legalMoves()) {
+    // 超时检测
+    if (std::chrono::high_resolution_clock::now() >= deadline) {
+      break;
+    }
     GameState newState(gameState);
     newState.applyMove(move);
-    double eval = maxValue(newState, depth - 1, alpha, beta, maxiumColor).second;
+    double eval = maxValue(newState, depth - 1, alpha, beta, maxiumColor, deadline).second;
     if (eval < beta) {
       beta = eval;
       bestMove = move;

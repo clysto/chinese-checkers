@@ -6,6 +6,8 @@
 int main(int argc, char* argv[]) {
   using namespace httplib;
 
+  std::signal(SIGINT, [](int) { exit(0); });
+
   std::string host = "localhost";
   int port = 1234;
 
@@ -59,7 +61,7 @@ int main(int argc, char* argv[]) {
     }
     GameState gameState(state);
     spdlog::info("state: {}", state);
-    spdlog::info("time: {} ms", searchTime);
+    spdlog::info("timelimit: {} ms", searchTime);
     Move move = gameState.searchBestMoveWithTimeLimit(searchTime);
     spdlog::info("bestmove: {} {}", move.src, move.dst);
     res.set_header("Access-Control-Allow-Origin", "*");
