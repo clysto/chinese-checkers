@@ -37,7 +37,7 @@ function App() {
 
   const computerMove = () => {
     // worker.postMessage(gameState.toString());
-    fetch('http://localhost:1234/timelimitsearch?' + new URLSearchParams({ state: gameState.toString(), time: 5000 }))
+    fetch('http://localhost:1234/timelimitsearch?' + new URLSearchParams({ state: gameState.toString(), time: 8000 }))
       .then((res) => res.text())
       .then((data) => {
         const [src, dst] = data.split(' ').map(Number);
@@ -46,15 +46,6 @@ function App() {
         moves = gameState.legalMoves();
         m.redraw();
       });
-    // fetch('http://localhost:1234/searchbestmove?' + new URLSearchParams({ state: gameState.toString(), depth: 7 }))
-    //   .then((res) => res.text())
-    //   .then((data) => {
-    //     const [src, dst] = data.split(' ').map(Number);
-    //     gameState.applyMove(src, dst);
-    //     lastMove = [src, dst];
-    //     moves = gameState.legalMoves();
-    //     m.redraw();
-    //   });
   };
 
   const handleRestart = () => {

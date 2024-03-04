@@ -221,10 +221,10 @@ Move GameState::searchBestMove(int depth) {
     return OPENINGS[turn].at(board[turn]);
   };
   auto deadline = std::chrono::high_resolution_clock::now() + std::chrono::seconds(10);
-  Move bestMove = maxValue(*this, depth, -std::numeric_limits<double>::infinity(),
-                           std::numeric_limits<double>::infinity(), turn, deadline)
-                      .first;
-  return bestMove;
+  auto result = maxValue(*this, depth, -std::numeric_limits<double>::infinity(),
+                         std::numeric_limits<double>::infinity(), turn, deadline);
+  spdlog::info("evaluated value: {}", result.second);
+  return result.first;
 }
 
 Move GameState::searchBestMoveWithTimeLimit(int timeLimit) {
@@ -232,21 +232,20 @@ Move GameState::searchBestMoveWithTimeLimit(int timeLimit) {
     return OPENINGS[turn].at(board[turn]);
   };
   int depth = 4;
-  Move bestMove;
+  Move bestMove = {-1, -1};
   double maxEval = -std::numeric_limits<double>::infinity();
   auto deadline = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(timeLimit);
   while (true) {
     auto result = maxValue(*this, depth, -std::numeric_limits<double>::infinity(),
                            std::numeric_limits<double>::infinity(), turn, deadline);
-    if (result.second > maxEval) {
-      maxEval = result.second;
-      bestMove = result.first;
-    }
+    maxEval = result.second;
+    bestMove = result.first;
     depth++;
     if (std::chrono::high_resolution_clock::now() >= deadline) {
       break;
     }
   }
+  spdlog::info("evaluated value: {}", maxEval);
   spdlog::info("actual search depth: {}", depth);
   return bestMove;
 }
@@ -260,8 +259,6 @@ std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, 
     if (result.depth >= depth && result.maxiumColor == maxiumColor) {
       if (result.flag == HASH_EXACT) {
         return {result.bestMove, result.value};
-      } else if (result.flag == HASH_ALPHA && result.value <= alpha) {
-        return {result.bestMove, alpha};
       } else if (result.flag == HASH_BETA && result.value >= beta) {
         return {result.bestMove, beta};
       }
@@ -274,10 +271,6 @@ std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, 
   }
   Move bestMove;
   for (Move move : gameState.legalMoves()) {
-    // 超时检测
-    if (std::chrono::high_resolution_clock::now() >= deadline) {
-      break;
-    }
     GameState newState(gameState);
     newState.applyMove(move);
     double eval = minValue(newState, depth - 1, alpha, beta, maxiumColor, deadline).second;
@@ -288,6 +281,10 @@ std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, 
     if (beta <= alpha) {
       HASH_TABLE.put(hash, {beta, depth, HASH_BETA, bestMove, maxiumColor});
       return {bestMove, beta};  // Beta cut-off
+    }
+    // 超时检测
+    if (std::chrono::high_resolution_clock::now() >= deadline) {
+      break;
     }
   }
   HASH_TABLE.put(hash, {alpha, depth, HASH_EXACT, bestMove, maxiumColor});
@@ -305,8 +302,6 @@ std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, 
         return {result.bestMove, result.value};
       } else if (result.flag == HASH_ALPHA && result.value <= alpha) {
         return {result.bestMove, alpha};
-      } else if (result.flag == HASH_BETA && result.value >= beta) {
-        return {result.bestMove, beta};
       }
     }
   }
@@ -317,10 +312,6 @@ std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, 
   }
   Move bestMove;
   for (Move move : gameState.legalMoves()) {
-    // 超时检测
-    if (std::chrono::high_resolution_clock::now() >= deadline) {
-      break;
-    }
     GameState newState(gameState);
     newState.applyMove(move);
     double eval = maxValue(newState, depth - 1, alpha, beta, maxiumColor, deadline).second;
@@ -331,6 +322,10 @@ std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, 
     if (beta <= alpha) {
       HASH_TABLE.put(hash, {alpha, depth, HASH_ALPHA, bestMove, maxiumColor});
       return {bestMove, alpha};  // Alpha cut-off
+    }
+    // 超时检测
+    if (std::chrono::high_resolution_clock::now() >= deadline) {
+      break;
     }
   }
   HASH_TABLE.put(hash, {beta, depth, HASH_EXACT, bestMove, maxiumColor});
