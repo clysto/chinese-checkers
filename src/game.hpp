@@ -23,7 +23,7 @@ struct Move {
 };
 
 struct TranspositionTableEntry {
-  double value;
+  int value;
   int depth;
   HashFlag flag;
   Move bestMove;
@@ -80,13 +80,13 @@ class GameState {
  public:
   GameState();
   GameState(GameState const &gameState);
-  explicit GameState(const std::string& state);
+  explicit GameState(const std::string &state);
   std::vector<int> getBoard();
   Color getTurn() const;
   std::vector<Move> legalMoves(Color color = EMPTY);
   void jumpMoves(int src, uint128_t &to);
   void applyMove(Move move);
-  double evaluate(int maxiumColor);
+  int evaluate(int maxiumColor);
   bool isGameOver();
   Move searchBestMove(int depth);
   Move searchBestMoveWithTimeLimit(int timeLimit);
@@ -94,7 +94,7 @@ class GameState {
   uint64_t hash();
 };
 
-std::pair<Move, double> maxValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor,
-                                 std::chrono::time_point<std::chrono::high_resolution_clock> deadline);
-std::pair<Move, double> minValue(GameState &gameState, int depth, double alpha, double beta, int maxiumColor,
-                                 std::chrono::time_point<std::chrono::high_resolution_clock> deadline);
+std::pair<Move, int> maxValue(GameState &gameState, int depth, int alpha, int beta, int maxiumColor,
+                              std::chrono::time_point<std::chrono::high_resolution_clock> deadline);
+std::pair<Move, int> minValue(GameState &gameState, int depth, int alpha, int beta, int maxiumColor,
+                              std::chrono::time_point<std::chrono::high_resolution_clock> deadline);

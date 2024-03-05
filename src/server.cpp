@@ -48,20 +48,20 @@ int main(int argc, char* argv[]) {
   svr.Get("/timelimitsearch", [](const Request& req, Response& res) {
     std::string state = req.get_param_value("state");
     std::string time = req.get_param_value("time");
-    int searchTime = 1000;
+    int searchTime = 1;
     if (!time.empty()) {
       try {
         searchTime = std::stoi(time);
       } catch (std::invalid_argument const& e) {
-        searchTime = 1000;
+        searchTime = 1;
       }
     }
-    if (searchTime < 1000 || searchTime > 100000) {
-      searchTime = 1000;
+    if (searchTime < 1 || searchTime > 100) {
+      searchTime = 1;
     }
     GameState gameState(state);
     spdlog::info("state: {}", state);
-    spdlog::info("timelimit: {} ms", searchTime);
+    spdlog::info("timelimit: {} seconds", searchTime);
     Move move = gameState.searchBestMoveWithTimeLimit(searchTime);
     spdlog::info("bestmove: {} {}", move.src, move.dst);
     res.set_header("Access-Control-Allow-Origin", "*");
