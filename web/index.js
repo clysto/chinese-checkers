@@ -1,7 +1,9 @@
 function App() {
   const pieceClasses = ['empty', 'red', 'green'];
   // State
-  let gameState = new GameState();
+  let gameState = new GameState(
+    '220200000/022000000/200000000/022000000/002201100/000000110/000000001/000000110/000001011 r 5'
+  );
   let moves = gameState.legalMoves();
   let lastMove = null;
   let srcPiece = -1;
@@ -37,7 +39,7 @@ function App() {
 
   const computerMove = () => {
     // worker.postMessage(gameState.toString());
-    // fetch('http://localhost:1234/timelimitsearch?' + new URLSearchParams({ state: gameState.toString(), time: 8 }))
+    // fetch('http://localhost:1234/timelimitsearch?' + new URLSearchParams({ state: gameState.toString(), time: 10 }))
     //   .then((res) => res.text())
     //   .then((data) => {
     //     const [src, dst] = data.split(' ').map(Number);
@@ -46,7 +48,7 @@ function App() {
     //     moves = gameState.legalMoves();
     //     m.redraw();
     //   });
-    fetch('http://localhost:1234/searchbestmove?' + new URLSearchParams({ state: gameState.toString(), depth: 6 }))
+    fetch('http://localhost:1234/searchbestmove?' + new URLSearchParams({ state: gameState.toString(), depth: 7 }))
       .then((res) => res.text())
       .then((data) => {
         const [src, dst] = data.split(' ').map(Number);
