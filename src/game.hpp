@@ -83,15 +83,15 @@ class GameState {
   explicit GameState(const std::string &state);
   std::vector<int> getBoard();
   Color getTurn() const;
-  std::vector<Move> legalMoves(Color color = EMPTY);
+  std::vector<Move> legalMoves();
   void jumpMoves(int src, uint128_t &to);
   void applyMove(Move move);
   int evaluate();
   bool isGameOver();
-  Move searchBestMove(int depth);
-  Move searchBestMoveWithTimeLimit(int timeLimit);
+  Move searchBestMove(int timeLimit);
   std::string toString();
   uint64_t hash();
 };
 
+int mtdf(GameState &gameState, int depth, int guess, time_point_t deadline);
 int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_point_t deadline);

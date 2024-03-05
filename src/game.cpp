@@ -1,5 +1,6 @@
+#ifdef HAVE_SPDLOG
 #include <spdlog/spdlog.h>
-
+#endif
 #include <cache.hpp>
 #include <constants.hpp>
 #include <game.hpp>
@@ -109,12 +110,9 @@ std::vector<int> GameState::getBoard() {
 
 Color GameState::getTurn() const { return turn; }
 
-std::vector<Move> GameState::legalMoves(Color color) {
-  if (color == EMPTY) {
-    color = turn;
-  }
+std::vector<Move> GameState::legalMoves() {
   std::vector<Move> moves;
-  uint128_t from = board[color];
+  uint128_t from = board[turn];
   SCAN_REVERSE_START(from, src)
   uint128_t to = ADJ_POSITIONS[pos_src] & ~(board[RED] | board[GREEN]);
   jumpMoves(pos_src, to);
@@ -123,8 +121,8 @@ std::vector<Move> GameState::legalMoves(Color color) {
   SCAN_REVERSE_END(to, dst)
   SCAN_REVERSE_END(from, src)
   // sort moves
-  std::sort(moves.begin(), moves.end(), [color](Move a, Move b) {
-    return color == RED
+  std::sort(moves.begin(), moves.end(), [this](Move a, Move b) {
+    return turn == RED
                ? PIECE_DISTANCES[a.dst] - PIECE_DISTANCES[a.src] < PIECE_DISTANCES[b.dst] - PIECE_DISTANCES[b.src]
                : PIECE_DISTANCES[a.dst] - PIECE_DISTANCES[a.src] > PIECE_DISTANCES[b.dst] - PIECE_DISTANCES[b.src];
   });
@@ -217,54 +215,47 @@ bool GameState::isGameOver() {
   return redWin || greenWin;
 }
 
-Move GameState::searchBestMove(int depth) {
+Move GameState::searchBestMove(int timeLimit) {
   if (round <= 4) {
+    // 开局库
     return OPENINGS[turn].at(board[turn]);
   }
-  int score = 0, beta, lowerbound = -INF, upperbound = INF;
-  Move move = NULL_MOVE;
-  // MTD(f) search
-  try {
-    do {
-      beta = (score == lowerbound ? score + 1 : score);
-      spdlog::info("search: [{}, {}]", beta - 1, beta);
-      score = alphaBetaSearch(*this, depth, beta - 1, beta, SECONDS_LATER(60));
-      move = HASH_TABLE.get(hash()).bestMove;
-      int flag = HASH_TABLE.get(hash()).flag;
-      spdlog::info("{}", flag);
-      (score < beta ? upperbound : lowerbound) = score;
-      spdlog::info("score: {}, beta: {}, [{} {}]", score, beta, lowerbound, upperbound);
-    } while (lowerbound < upperbound);
-  } catch (std::runtime_error &e) {
-    spdlog::error(e.what());
-  }
-  spdlog::info("evaluated score: {}", score);
-  return move;
-}
-
-Move GameState::searchBestMoveWithTimeLimit(int timeLimit) {
-  if (round <= 4) {
-    return OPENINGS[turn].at(board[turn]);
-  }
-  int depth = 1, eval;
+  int depth = 1, eval = -INF, current;
   Move move = NULL_MOVE;
   auto deadline = SECONDS_LATER(timeLimit);
   while (depth < 100) {
     try {
-      eval = alphaBetaSearch(*this, depth, -INF, INF, deadline);
+      eval = mtdf(*this, depth, eval, deadline);
       move = HASH_TABLE.get(hash()).bestMove;
+#ifdef HAVE_SPDLOG
       spdlog::info("complete search depth: {}, score: {}", depth, eval);
+#endif
     } catch (std::runtime_error &e) {
+#ifdef HAVE_SPDLOG
       spdlog::info("timeout search depth: {}", depth);
+#endif
       break;
     }
     if (eval > 9999) {
+      // 找到胜利着法
       break;
     }
     depth++;
   }
-  spdlog::info("evaluated score: {}", eval);
   return move;
+}
+
+int mtdf(GameState &gameState, int depth, int guess, time_point_t deadline) {
+  int beta = guess;
+  int upperbound = INF;
+  int lowerbound = -INF;
+  int score;
+  do {
+    beta = (score == lowerbound ? score + 1 : score);
+    score = alphaBetaSearch(gameState, depth, beta - 1, beta, deadline);
+    (score < beta ? upperbound : lowerbound) = score;
+  } while (lowerbound < upperbound);
+  return score;
 }
 
 int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_point_t deadline) {

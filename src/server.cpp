@@ -22,30 +22,7 @@ int main(int argc, char* argv[]) {
 
   spdlog::info("Server running at http://{}:{}", host, port);
 
-  svr.Get("/searchbestmove", [](const Request& req, Response& res) {
-    std::string state = req.get_param_value("state");
-    std::string depth = req.get_param_value("depth");
-    int searchDepth = 5;
-    if (!depth.empty()) {
-      try {
-        searchDepth = std::stoi(depth);
-      } catch (std::invalid_argument const& e) {
-        searchDepth = 5;
-      }
-    }
-    if (searchDepth < 1 || searchDepth > 10) {
-      searchDepth = 5;
-    }
-    GameState gameState(state);
-    spdlog::info("state: {}", state);
-    spdlog::info("depth: {}", searchDepth);
-    Move move = gameState.searchBestMove(searchDepth);
-    spdlog::info("bestmove: {} {}", move.src, move.dst);
-    res.set_header("Access-Control-Allow-Origin", "*");
-    res.set_content(std::to_string(move.src) + " " + std::to_string(move.dst), "text/plain");
-  });
-
-  svr.Get("/timelimitsearch", [](const Request& req, Response& res) {
+  svr.Get("/search", [](const Request& req, Response& res) {
     std::string state = req.get_param_value("state");
     std::string time = req.get_param_value("time");
     int searchTime = 1;
@@ -61,8 +38,8 @@ int main(int argc, char* argv[]) {
     }
     GameState gameState(state);
     spdlog::info("state: {}", state);
-    spdlog::info("timelimit: {} seconds", searchTime);
-    Move move = gameState.searchBestMoveWithTimeLimit(searchTime);
+    spdlog::info("think: {} seconds", searchTime);
+    Move move = gameState.searchBestMove(searchTime);
     spdlog::info("bestmove: {} {}", move.src, move.dst);
     res.set_header("Access-Control-Allow-Origin", "*");
     res.set_content(std::to_string(move.src) + " " + std::to_string(move.dst), "text/plain");

@@ -4,7 +4,7 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
-  int timelimit = 8000;
+  int timelimit = 10;
   spdlog::set_level(spdlog::level::err);
   while (true) {
     std::string command;
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
       std::string state;
       std::getline(std::cin, state);
       GameState gameState(state);
-      Move move = gameState.searchBestMoveWithTimeLimit(timelimit);
+      Move move = gameState.searchBestMove(timelimit);
       std::cout << move.src << " " << move.dst << std::endl;
     }
     if (command == "TIMELIMIT") {

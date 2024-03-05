@@ -36,9 +36,6 @@ class GameState {
     }
     board.delete();
   }
-  searchBestMove(depth) {
-    return this.state.searchBestMove(depth);
-  }
   toString() {
     return this.state.toString();
   }
