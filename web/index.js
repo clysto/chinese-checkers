@@ -44,7 +44,8 @@ function App() {
       m.redraw();
     }, 1000);
     fetch(
-      'http://localhost:1234/search?' + new URLSearchParams({ state: gameState.toString(), time: computerThinkTime })
+      'http://maoyachen.com:1234/search?' +
+        new URLSearchParams({ state: gameState.toString(), time: computerThinkTime })
     )
       .then((res) => res.text())
       .then((data) => {
@@ -55,7 +56,7 @@ function App() {
         gameState.applyMove(src, dst);
         lastMove = [src, dst];
         moves = gameState.legalMoves();
-        if (countDown > 8) {
+        if (computerThinkTime - countDown < 1) {
           setTimeout(() => {
             clearInterval(t);
             m.redraw();

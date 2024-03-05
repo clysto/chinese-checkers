@@ -42,6 +42,9 @@ class GameState {
   delete() {
     return this.state.delete();
   }
+  searchBestMove(timeLimit) {
+    return this.state.searchBestMove(timeLimit);
+  }
   get board() {
     return this.boardCache;
   }

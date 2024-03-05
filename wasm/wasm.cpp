@@ -18,6 +18,7 @@ EMSCRIPTEN_BINDINGS(wasm) {
       .function("applyMove", &GameState::applyMove)
       .function("evaluate", &GameState::evaluate)
       .function("isGameOver", &GameState::isGameOver)
+      .function("searchBestMove", &GameState::searchBestMove)
       .function("toString", &GameState::toString)
       .function("hash", &GameState::hash);
   register_vector<int>("VectorInt");
