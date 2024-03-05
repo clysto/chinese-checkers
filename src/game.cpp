@@ -21,6 +21,8 @@ inline int bitlen_u128(uint128_t u) {
 #define INF INT_MAX
 #define SECONDS_LATER(x) std::chrono::high_resolution_clock::now() + std::chrono::seconds(x)
 #define NOW std::chrono::high_resolution_clock::now()
+#define NULL_MOVE \
+  Move { -1, -1 }
 
 #define SCAN_REVERSE_START(x, v) \
   while (x) {                    \
@@ -150,7 +152,7 @@ void GameState::applyMove(Move move) {
   }
 }
 
-int GameState::evaluate(int maxiumColor) {
+int GameState::evaluate() {
   int redScore = 0;
   int greenScore = 0;
   int lastRed = INF;
@@ -179,7 +181,7 @@ int GameState::evaluate(int maxiumColor) {
     greenScore = 10000;
     redScore = 0;
   }
-  return maxiumColor == Color::RED ? redScore - greenScore : greenScore - redScore;
+  return turn == Color::RED ? redScore - greenScore : greenScore - redScore;
 }
 
 uint64_t GameState::hash() {
@@ -220,14 +222,15 @@ Move GameState::searchBestMove(int depth) {
     return OPENINGS[turn].at(board[turn]);
   }
   int score = 0, beta, lowerbound = -INF, upperbound = INF;
-  Move move = {-1, -1};
+  Move move = NULL_MOVE;
+  // MTD(f) search
   try {
-    // MTD(f) search
     do {
       beta = (score == lowerbound ? score + 1 : score);
-      std::tie(move, score) = maxValue(*this, depth, beta - 1, beta, turn, SECONDS_LATER(60));
-      spdlog::info("search depth: {}, score: {}, beta: {}", depth, score, beta);
+      score = alphaBetaSearch(*this, depth, beta - 1, beta, SECONDS_LATER(60));
+      move = HASH_TABLE.get(hash()).bestMove;
       (score < beta ? upperbound : lowerbound) = score;
+      spdlog::info("search depth: {}, score: {}, beta: {}, [{} {}]", depth, score, beta, lowerbound, upperbound);
     } while (lowerbound < upperbound);
   } catch (std::runtime_error &e) {
     spdlog::error(e.what());
@@ -240,19 +243,17 @@ Move GameState::searchBestMoveWithTimeLimit(int timeLimit) {
   if (round <= 4) {
     return OPENINGS[turn].at(board[turn]);
   }
-  int bestEval = -INF, depth = 1, eval;
-  Move bestMove = {-1, -1}, move = {-1, -1};
+  int depth = 1, eval;
+  Move move = NULL_MOVE;
   auto deadline = SECONDS_LATER(timeLimit);
   while (depth < 100) {
     try {
-      std::tie(move, eval) = maxValue(*this, depth, -INF, INF, turn, deadline);
+      eval = alphaBetaSearch(*this, depth, -INF, INF, deadline);
+      move = HASH_TABLE.get(hash()).bestMove;
+      spdlog::info("complete search depth: {}, score: {}", depth, eval);
     } catch (std::runtime_error &e) {
-      spdlog::info("actual search depth: {}", depth - 1);
+      spdlog::info("timeout search depth: {}", depth);
       break;
-    }
-    if (eval > bestEval) {
-      bestEval = eval;
-      bestMove = move;
     }
     if (eval > 9999) {
       break;
@@ -260,91 +261,51 @@ Move GameState::searchBestMoveWithTimeLimit(int timeLimit) {
     depth++;
   }
   spdlog::info("evaluated score: {}", eval);
-  return bestMove;
+  return move;
 }
 
-std::pair<Move, int> maxValue(GameState &gameState, int depth, int alpha, int beta, int maxiumColor,
-                              std::chrono::time_point<std::chrono::high_resolution_clock> deadline) {
+int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_point_t deadline) {
   // 查询置换表
   uint64_t hash = gameState.hash();
   if (HASH_TABLE.exists(hash)) {
     auto result = HASH_TABLE.get(hash);
-    if (result.depth >= depth && result.maxiumColor == maxiumColor) {
+    if (result.depth >= depth) {
       if (result.flag == HASH_EXACT) {
-        return {result.bestMove, result.value};
+        return result.value;
       } else if (result.flag == HASH_BETA && result.value >= beta) {
-        return {result.bestMove, beta};
+        return beta;
+      } else if (result.flag == HASH_ALPHA && result.value <= alpha) {
+        return alpha;
       }
     }
   }
-
+  // 叶子结点
   if (gameState.isGameOver() || depth == 0) {
-    return {{Move{-2, -2}}, gameState.evaluate(maxiumColor)};
+    int val = gameState.evaluate();
+    HASH_TABLE.put(hash, {val, depth, HASH_EXACT, NULL_MOVE});
+    return val;
   }
-  Move bestMove = {-3, -3};
+  Move bestMove = NULL_MOVE;
   HashFlag flag = HASH_ALPHA;
   for (Move move : gameState.legalMoves()) {
     GameState newState(gameState);
     newState.applyMove(move);
-    int eval = minValue(newState, depth - 1, alpha, beta, maxiumColor, deadline).second;
+    int eval = -alphaBetaSearch(newState, depth - 1, -beta, -alpha, deadline);
+    if (eval >= beta) {
+      // 发生截断
+      HASH_TABLE.put(hash, {beta, depth, HASH_BETA, bestMove});
+      return beta;
+    }
     if (eval > alpha) {
+      flag = HASH_EXACT;
       alpha = eval;
       bestMove = move;
-      flag = HASH_EXACT;
-      if (beta <= alpha) {
-        // 发生 Beta 截断 Fail-High
-        HASH_TABLE.put(hash, {alpha, depth, HASH_BETA, bestMove, maxiumColor});
-        return {bestMove, alpha};
-      }
     }
     // 超时检测
     if (NOW >= deadline) {
       throw std::runtime_error("timeout");
     }
   }
-  HASH_TABLE.put(hash, {alpha, depth, flag, bestMove, maxiumColor});
-  return {bestMove, alpha};
-}
-
-std::pair<Move, int> minValue(GameState &gameState, int depth, int alpha, int beta, int maxiumColor,
-                              std::chrono::time_point<std::chrono::high_resolution_clock> deadline) {
-  // 查询置换表
-  uint64_t hash = gameState.hash();
-  if (HASH_TABLE.exists(hash)) {
-    auto result = HASH_TABLE.get(hash);
-    if (result.depth >= depth && result.maxiumColor == maxiumColor) {
-      if (result.flag == HASH_EXACT) {
-        return {result.bestMove, result.value};
-      } else if (result.flag == HASH_ALPHA && result.value <= alpha) {
-        return {result.bestMove, alpha};
-      }
-    }
-  }
-
-  if (gameState.isGameOver() || depth == 0) {
-    return {{Move{-2, -2}}, gameState.evaluate(maxiumColor)};
-  }
-  Move bestMove = {-3, -3};
-  HashFlag flag = HASH_BETA;
-  for (Move move : gameState.legalMoves()) {
-    GameState newState(gameState);
-    newState.applyMove(move);
-    int eval = maxValue(newState, depth - 1, alpha, beta, maxiumColor, deadline).second;
-    if (eval < beta) {
-      beta = eval;
-      bestMove = move;
-      flag = HASH_EXACT;
-      if (beta <= alpha) {
-        // 发生 Alpha 截断 Fail-Low
-        HASH_TABLE.put(hash, {beta, depth, HASH_ALPHA, bestMove, maxiumColor});
-        return {bestMove, beta};
-      }
-    }
-    // 超时检测
-    if (NOW >= deadline) {
-      throw std::runtime_error("timeout");
-    }
-  }
-  HASH_TABLE.put(hash, {beta, depth, flag, bestMove, maxiumColor});
-  return {bestMove, beta};
+  HASH_TABLE.put(hash, {alpha, depth, flag, bestMove});
+  return alpha;
 }
