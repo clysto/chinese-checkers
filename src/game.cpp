@@ -1,10 +1,11 @@
 #ifdef HAVE_SPDLOG
 #include <spdlog/spdlog.h>
 #endif
+#include <algorithm>
 #include <cache.hpp>
+#include <climits>
 #include <constants.hpp>
 #include <game.hpp>
-#include <limits>
 #include <string>
 
 inline int bitlen_u128(uint128_t u) {
@@ -285,11 +286,11 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
 
   Move bestMove = NULL_MOVE;
   HashFlag flag = HASH_LOWERBOUND;
-  int value = -INF, current;
+  int value = -INF;
   for (Move move : gameState.legalMoves()) {
     GameState newState(gameState);
     newState.applyMove(move);
-    current = -alphaBetaSearch(newState, depth - 1, -beta, -alpha, deadline);
+    int current = -alphaBetaSearch(newState, depth - 1, -beta, -alpha, deadline);
     if (current > value) {
       value = current;
       bestMove = move;
