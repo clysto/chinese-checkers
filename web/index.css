@@ -4,6 +4,7 @@
 body {
   margin: 0;
   background-color: #d8efff;
+  font-family: sans-serif;
 }
 #app {
   display: flex;
