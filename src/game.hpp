@@ -1,6 +1,8 @@
 #pragma once
 
+#include <list>
 #include <map>
+#include <set>
 #include <vector>
 
 using uint128_t = __uint128_t;
@@ -12,22 +14,9 @@ enum Color {
   GREEN,
 };
 
-enum HashFlag {
-  HASH_EXACT,
-  HASH_LOWERBOUND,
-  HASH_UPPERBOUND,
-};
-
 struct Move {
   int src;
   int dst;
-};
-
-struct TranspositionTableEntry {
-  int value;
-  int depth;
-  HashFlag flag;
-  Move bestMove;
 };
 
 const uint128_t BOARD_MASK = ((uint128_t)0x1ffff << 64) | 0xffffffffffffffff;
@@ -56,6 +45,8 @@ const int PIECE_SCORE_TABLE[81] = {
     10, 10, 12, 20, 31, 36, 38, 40, 42,  // 8
 };
 
+inline bool operator<(const Move &a, const Move &b);
+
 const std::map<uint128_t, Move> OPENINGS[3] = {
     {},
     {
@@ -76,6 +67,7 @@ class GameState {
   uint128_t board[3];
   Color turn;
   int round;
+  uint64_t zobristHash;
 
  public:
   GameState();
@@ -83,9 +75,10 @@ class GameState {
   explicit GameState(const std::string &state);
   std::vector<int> getBoard();
   Color getTurn() const;
-  std::vector<Move> legalMoves();
+  std::list<Move> legalMoves();
   void jumpMoves(int src, uint128_t &to);
   void applyMove(Move move);
+  void undoMove(Move move);
   int evaluate();
   bool isGameOver();
   Move searchBestMove(int timeLimit);

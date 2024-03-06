@@ -18,6 +18,9 @@ function App() {
 
   // Event handlers
   const handlePieceClick = (p) => {
+    if (gameState.isGameOver()) {
+      return;
+    }
     if (gameState.turn !== myColor) {
       return;
     }
@@ -33,6 +36,9 @@ function App() {
   };
 
   const computerMove = () => {
+    if (gameState.isGameOver()) {
+      return;
+    }
     const sessionId = gameId;
     countDown = computerThinkTime;
     const t = setInterval(() => {
@@ -44,8 +50,7 @@ function App() {
       m.redraw();
     }, 1000);
     fetch(
-      'http://maoyachen.com:1234/search?' +
-        new URLSearchParams({ state: gameState.toString(), time: computerThinkTime })
+      'http://localhost:1234/search?' + new URLSearchParams({ state: gameState.toString(), time: computerThinkTime })
     )
       .then((res) => res.text())
       .then((data) => {
@@ -112,7 +117,9 @@ function App() {
         m('div', { class: 'info-area' }, [
           m(
             'span',
-            gameState.turn == myColor
+            gameState.isGameOver()
+              ? [m('i.bi.bi-trophy-fill'), '游戏结束']
+              : gameState.turn == myColor
               ? [m('i.bi.bi-joystick'), '你的回合']
               : [m('i.bi.bi-hourglass-split'), '电脑思考中：' + countDown]
           ),

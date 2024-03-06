@@ -39,6 +39,9 @@ class GameState {
   toString() {
     return this.state.toString();
   }
+  isGameOver() {
+    return this.state.isGameOver();
+  }
   delete() {
     return this.state.delete();
   }

@@ -7,6 +7,7 @@
 #include <constants.hpp>
 #include <game.hpp>
 #include <string>
+#include <table.hpp>
 
 inline int bitlen_u128(uint128_t u) {
   if (u == 0) {
@@ -34,14 +35,21 @@ inline int bitlen_u128(uint128_t u) {
   x ^= ((uint128_t)1 << pos_##v); \
   }
 
-cache::lru_cache<uint64_t, TranspositionTableEntry> HASH_TABLE(1 << 20);
+inline bool operator<(const Move &a, const Move &b) {
+  return PIECE_DISTANCES[a.dst] - PIECE_DISTANCES[a.src] < PIECE_DISTANCES[b.dst] - PIECE_DISTANCES[b.src];
+}
 
-GameState::GameState() : board{0, INITIAL_RED, INITIAL_GREEN}, turn(RED), round(1) {}
+cache::lru_cache<uint64_t, TranspositionTableEntry> HASH_TABLE(1 << 22);
+
+GameState::GameState() : board{0, INITIAL_RED, INITIAL_GREEN}, turn(RED), round(1), zobristHash(0) { hash(); }
 
 GameState::GameState(GameState const &gameState)
-    : board{0, gameState.board[RED], gameState.board[GREEN]}, turn(gameState.turn), round(gameState.round) {}
+    : board{0, gameState.board[RED], gameState.board[GREEN]},
+      turn(gameState.turn),
+      round(gameState.round),
+      zobristHash(gameState.zobristHash) {}
 
-GameState::GameState(const std::string &state) : board{0, 0, 0}, turn(RED), round(10) {
+GameState::GameState(const std::string &state) : board{0, 0, 0}, turn(RED), round(10), zobristHash(0) {
   board[RED] = 0;
   board[GREEN] = 0;
   int p = 0;
@@ -69,6 +77,7 @@ GameState::GameState(const std::string &state) : board{0, 0, 0}, turn(RED), roun
     i++;
   }
 end:
+  hash();
   try {
     round = std::stoi(state.substr(i + 1));
   } catch (std::invalid_argument const &e) {
@@ -111,23 +120,26 @@ std::vector<int> GameState::getBoard() {
 
 Color GameState::getTurn() const { return turn; }
 
-std::vector<Move> GameState::legalMoves() {
-  std::vector<Move> moves;
+std::list<Move> GameState::legalMoves() {
+  std::multiset<Move> moves;
+  std::list<Move> result;
   uint128_t from = board[turn];
   SCAN_REVERSE_START(from, src)
   uint128_t to = ADJ_POSITIONS[pos_src] & ~(board[RED] | board[GREEN]);
   jumpMoves(pos_src, to);
   SCAN_REVERSE_START(to, dst)
-  moves.push_back({pos_src, pos_dst});
+  moves.insert({pos_src, pos_dst});
   SCAN_REVERSE_END(to, dst)
   SCAN_REVERSE_END(from, src)
-  // sort moves
-  std::sort(moves.begin(), moves.end(), [this](Move a, Move b) {
-    return turn == RED
-               ? PIECE_DISTANCES[a.dst] - PIECE_DISTANCES[a.src] < PIECE_DISTANCES[b.dst] - PIECE_DISTANCES[b.src]
-               : PIECE_DISTANCES[a.dst] - PIECE_DISTANCES[a.src] > PIECE_DISTANCES[b.dst] - PIECE_DISTANCES[b.src];
-  });
-  return moves;
+  if (turn == GREEN) {
+    result = {moves.rbegin(), moves.rend()};
+  } else {
+    result = {moves.begin(), moves.end()};
+  }
+  auto it = result.begin();
+  std::advance(it, result.size() / 4 + 1);
+  result.erase(it, result.end());
+  return result;
 }
 
 void GameState::jumpMoves(int src, uint128_t &to) {
@@ -143,11 +155,30 @@ void GameState::jumpMoves(int src, uint128_t &to) {
 }
 
 void GameState::applyMove(Move move) {
+  if (zobristHash != 0) {
+    zobristHash ^= ZOBRIST_TABLE[move.src][turn];
+    zobristHash ^= ZOBRIST_TABLE[move.dst][turn];
+    zobristHash ^= 0xc503204d9e521ac5ULL;
+  }
   board[turn] ^= (uint128_t)1 << move.src;
   board[turn] |= (uint128_t)1 << move.dst;
   turn = turn == Color::RED ? Color::GREEN : Color::RED;
   if (turn == RED) {
     round++;
+  }
+}
+
+void GameState::undoMove(Move move) {
+  turn = turn == Color::RED ? Color::GREEN : Color::RED;
+  board[turn] ^= (uint128_t)1 << move.dst;
+  board[turn] |= (uint128_t)1 << move.src;
+  if (turn == RED) {
+    round--;
+  }
+  if (zobristHash != 0) {
+    zobristHash ^= ZOBRIST_TABLE[move.src][turn];
+    zobristHash ^= ZOBRIST_TABLE[move.dst][turn];
+    zobristHash ^= 0xc503204d9e521ac5ULL;
   }
 }
 
@@ -184,18 +215,20 @@ int GameState::evaluate() {
 }
 
 uint64_t GameState::hash() {
-  uint64_t hash = 0;
-  for (int i = 0; i < 81; i++) {
-    if (board[RED] >> i & 1) {
-      hash ^= ZOBRIST_TABLE[i][RED];
-    } else if (board[GREEN] >> i & 1) {
-      hash ^= ZOBRIST_TABLE[i][GREEN];
+  if (zobristHash == 0) {
+    uint128_t red = board[RED];
+    uint128_t green = board[GREEN];
+    SCAN_REVERSE_START(red, src)
+    zobristHash ^= ZOBRIST_TABLE[pos_src][RED];
+    SCAN_REVERSE_END(red, src)
+    SCAN_REVERSE_START(green, src)
+    zobristHash ^= ZOBRIST_TABLE[pos_src][GREEN];
+    SCAN_REVERSE_END(green, src)
+    if (turn == GREEN) {
+      zobristHash ^= 0xc503204d9e521ac5ULL;
     }
   }
-  if (turn == GREEN) {
-    hash ^= 0xc503204d9e521ac5ULL;
-  }
-  return hash;
+  return zobristHash;
 }
 
 bool GameState::isGameOver() {
@@ -221,7 +254,7 @@ Move GameState::searchBestMove(int timeLimit) {
     // 开局库
     return OPENINGS[turn].at(board[turn]);
   }
-  int depth = 1, eval = -INF, current;
+  int depth = 1, eval = -INF;
   Move move = NULL_MOVE;
   auto deadline = SECONDS_LATER(timeLimit);
   while (depth < 100) {
@@ -247,10 +280,10 @@ Move GameState::searchBestMove(int timeLimit) {
 }
 
 int mtdf(GameState &gameState, int depth, int guess, time_point_t deadline) {
-  int beta = guess;
+  int beta;
   int upperbound = INF;
   int lowerbound = -INF;
-  int score;
+  int score = guess;
   do {
     beta = (score == lowerbound ? score + 1 : score);
     score = alphaBetaSearch(gameState, depth, beta - 1, beta, deadline);
@@ -285,12 +318,12 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
   }
 
   Move bestMove = NULL_MOVE;
-  HashFlag flag = HASH_LOWERBOUND;
+  HashFlag flag;
   int value = -INF;
   for (Move move : gameState.legalMoves()) {
-    GameState newState(gameState);
-    newState.applyMove(move);
-    int current = -alphaBetaSearch(newState, depth - 1, -beta, -alpha, deadline);
+    gameState.applyMove(move);
+    int current = -alphaBetaSearch(gameState, depth - 1, -beta, -alpha, deadline);
+    gameState.undoMove(move);
     if (current > value) {
       value = current;
       bestMove = move;
@@ -312,6 +345,6 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
   } else {
     flag = HASH_EXACT;
   }
-  HASH_TABLE.put(hash, {value, depth, flag, bestMove});
+  HASH_TABLE.put(hash, {hash, value, depth, flag, bestMove});
   return alpha;
 }
