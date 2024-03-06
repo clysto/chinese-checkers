@@ -94,7 +94,7 @@ class GameState {
   explicit GameState(const std::string &state);
   std::vector<int> getBoard();
   Color getTurn() const;
-  std::list<Move> legalMoves();
+  std::vector<Move> legalMoves();
   void jumpMoves(int src, uint128_t &to);
   void applyMove(Move move);
   void undoMove(Move move);

@@ -115,9 +115,8 @@ std::vector<int> GameState::getBoard() {
 
 Color GameState::getTurn() const { return turn; }
 
-std::list<Move> GameState::legalMoves() {
+std::vector<Move> GameState::legalMoves() {
   std::multiset<Move> moves;
-  std::list<Move> result;
   uint128_t from = board[turn];
   SCAN_REVERSE_START(from, src)
   uint128_t to = ADJ_POSITIONS[pos_src] & ~(board[RED] | board[GREEN]);
@@ -127,14 +126,10 @@ std::list<Move> GameState::legalMoves() {
   SCAN_REVERSE_END(to, dst)
   SCAN_REVERSE_END(from, src)
   if (turn == GREEN) {
-    result = {moves.rbegin(), moves.rend()};
+    return {moves.rbegin(), moves.rend()};
   } else {
-    result = {moves.begin(), moves.end()};
+    return {moves.begin(), moves.end()};
   }
-  auto it = result.begin();
-  std::advance(it, result.size() / 4 + 1);
-  result.erase(it, result.end());
-  return result;
 }
 
 void GameState::jumpMoves(int src, uint128_t &to) {
@@ -315,7 +310,11 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
   Move bestMove = NULL_MOVE;
   HashFlag flag;
   int value = -INF;
-  for (Move move : gameState.legalMoves()) {
+  auto moves = gameState.legalMoves();
+  auto it = moves.begin();
+  std::advance(it, moves.size() / 4 + 1);
+  moves.erase(it, moves.end());
+  for (Move move : moves) {
     gameState.applyMove(move);
     int current = -alphaBetaSearch(gameState, depth - 1, -beta, -alpha, deadline);
     gameState.undoMove(move);

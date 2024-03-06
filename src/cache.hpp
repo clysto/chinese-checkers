@@ -13,7 +13,7 @@ class lru_cache {
   typedef typename std::pair<key_t, value_t> key_value_pair_t;
   typedef typename std::list<key_value_pair_t>::iterator list_iterator_t;
 
-  explicit lru_cache(size_t max_size) : _max_size(max_size) { _cache_items_map.reserve(_max_size); }
+  explicit lru_cache(size_t max_size) : _max_size(max_size) {}
 
   void put(const key_t& key, const value_t& value) {
     auto it = _cache_items_map.find(key);
