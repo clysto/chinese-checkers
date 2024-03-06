@@ -1,13 +1,8 @@
 #ifdef HAVE_SPDLOG
 #include <spdlog/spdlog.h>
 #endif
-#include <algorithm>
-#include <cache.hpp>
-#include <climits>
 #include <constants.hpp>
 #include <game.hpp>
-#include <string>
-#include <table.hpp>
 
 inline int bitlen_u128(uint128_t u) {
   if (u == 0) {

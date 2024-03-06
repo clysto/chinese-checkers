@@ -1,8 +1,13 @@
 #pragma once
 
+#include <algorithm>
+#include <cache.hpp>
+#include <chrono>
+#include <climits>
 #include <list>
 #include <map>
 #include <set>
+#include <string>
 #include <vector>
 
 using uint128_t = __uint128_t;
@@ -14,9 +19,23 @@ enum Color {
   GREEN,
 };
 
+enum HashFlag {
+  HASH_EXACT,
+  HASH_LOWERBOUND,
+  HASH_UPPERBOUND,
+};
+
 struct Move {
   int src;
   int dst;
+};
+
+struct TranspositionTableEntry {
+  uint64_t hash;
+  int value;
+  int depth;
+  HashFlag flag;
+  Move bestMove;
 };
 
 const uint128_t BOARD_MASK = ((uint128_t)0x1ffff << 64) | 0xffffffffffffffff;
