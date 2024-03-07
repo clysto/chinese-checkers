@@ -191,8 +191,8 @@ int GameState::evaluate() {
   }
   greenScore += PIECE_SCORE_TABLE[pos_src];
   SCAN_REVERSE_END(green, src)
-  redScore -= 1 << std::max(0, 5 - lastRed);
-  greenScore -= 1 << std::max(0, 5 - lastGreen);
+  redScore -= 1 << std::max(0, 4 - lastRed);
+  greenScore -= 1 << std::max(0, 4 - lastGreen);
   if (lastRed == 13) {
     redScore = 10000;
     greenScore = 0;
@@ -244,45 +244,58 @@ Move GameState::searchBestMove(int timeLimit) {
     // 开局库
     return OPENINGS[turn].at(board[turn]);
   }
-  int depth = 1, eval = -INF;
-  Move move = NULL_MOVE;
+  int depth = 1, eval = -INF, bestEval = -INF;
+  Move move = NULL_MOVE, bestMove = NULL_MOVE;
   auto deadline = SECONDS_LATER(timeLimit);
+  MovePath pline;
   while (depth < 100) {
-    try {
-      eval = mtdf(*this, depth, eval, deadline);
-      move = HASH_TABLE.get(hash()).bestMove;
+    pline.moves.clear();
+    bestEval = eval;
+    bestMove = move;
+    eval = mtdf(*this, depth, eval, pline, deadline);
+    uint64_t h = hash();
+    move = HASH_TABLE.get(h).bestMove;
 #ifdef HAVE_SPDLOG
-      spdlog::info("complete search depth: {}, score: {}", depth, eval);
+    spdlog::info("complete search depth: {}, score: {}, move: {} {}", depth, eval, move.src, move.dst);
 #endif
-    } catch (std::runtime_error &e) {
-#ifdef HAVE_SPDLOG
-      spdlog::info("timeout search depth: {}", depth);
-#endif
-      break;
+    auto tempState = *this;
+    while (HASH_TABLE.exists(h)) {
+      auto result = HASH_TABLE.get(h);
+      pline.moves.push_back(result.bestMove);
+      tempState.applyMove(result.bestMove);
+      h = tempState.hash();
     }
-    if (eval > 9999) {
+    if (eval > 9999 || NOW >= deadline) {
       // 找到胜利着法
       break;
     }
     depth++;
   }
-  return move;
+  if (eval > bestEval) {
+    bestEval = eval;
+    bestMove = move;
+  }
+#ifdef HAVE_SPDLOG
+  spdlog::info("final eval: {}", bestEval);
+#endif
+  return bestMove;
 }
 
-int mtdf(GameState &gameState, int depth, int guess, time_point_t deadline) {
+int mtdf(GameState &gameState, int depth, int guess, MovePath &pline, time_point_t deadline) {
   int beta;
   int upperbound = INF;
   int lowerbound = -INF;
   int score = guess;
   do {
     beta = (score == lowerbound ? score + 1 : score);
-    score = alphaBetaSearch(gameState, depth, beta - 1, beta, deadline);
+    pline.index = 0;
+    score = alphaBetaSearch(gameState, depth, beta - 1, beta, pline, deadline);
     (score < beta ? upperbound : lowerbound) = score;
   } while (lowerbound < upperbound);
   return score;
 }
 
-int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_point_t deadline) {
+int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, MovePath &pline, time_point_t deadline) {
   // 查询置换表
   uint64_t hash = gameState.hash();
   int alphaOrig = alpha;
@@ -311,12 +324,19 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
   HashFlag flag;
   int value = -INF;
   auto moves = gameState.legalMoves();
-  auto it = moves.begin();
-  std::advance(it, moves.size() / 4 + 1);
-  moves.erase(it, moves.end());
+  // 优先上一次搜索的最佳着法
+  if (pline.index != pline.moves.size()) {
+    moves.insert(moves.begin(), pline.moves[pline.index++]);
+  }
   for (Move move : moves) {
+    // 跳过向后走两步及其以上的着法
+    if (gameState.getTurn() == GREEN && PIECE_DISTANCES[move.dst] - PIECE_DISTANCES[move.src] <= -2) {
+      continue;
+    } else if (gameState.getTurn() == RED && PIECE_DISTANCES[move.src] - PIECE_DISTANCES[move.dst] <= -2) {
+      continue;
+    }
     gameState.applyMove(move);
-    int current = -alphaBetaSearch(gameState, depth - 1, -beta, -alpha, deadline);
+    int current = -alphaBetaSearch(gameState, depth - 1, -beta, -alpha, pline, deadline);
     gameState.undoMove(move);
     if (current > value) {
       value = current;
@@ -329,7 +349,7 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
     }
     // 超时检测
     if (NOW >= deadline) {
-      throw std::runtime_error("timeout");
+      break;
     }
   }
   if (value <= alphaOrig) {

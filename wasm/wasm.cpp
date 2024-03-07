@@ -16,6 +16,7 @@ EMSCRIPTEN_BINDINGS(wasm) {
       .function("getBoard", &GameState::getBoard)
       .function("legalMoves", &GameState::legalMoves)
       .function("applyMove", &GameState::applyMove)
+      .function("undoMove", &GameState::undoMove)
       .function("evaluate", &GameState::evaluate)
       .function("isGameOver", &GameState::isGameOver)
       .function("searchBestMove", &GameState::searchBestMove)

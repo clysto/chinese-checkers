@@ -12,6 +12,7 @@ function App() {
   let showDialog = false;
   let countDown = 0;
   let gameId = 0;
+  let myLastMove = null;
   // Bind value
   let userSelectColor = RED;
   let userSelectMode = 10;
@@ -28,6 +29,7 @@ function App() {
       srcPiece = p;
     } else if (moves[srcPiece] && moves[srcPiece].has(p)) {
       gameState.applyMove(srcPiece, p);
+      myLastMove = [srcPiece, p];
       lastMove = [srcPiece, p];
       srcPiece = -1;
       moves = gameState.legalMoves();
@@ -50,7 +52,7 @@ function App() {
       m.redraw();
     }, 1000);
     fetch(
-      'http://maoyachen.com:1234/search?' + new URLSearchParams({ state: gameState.toString(), time: computerThinkTime })
+      'http://maoyachen.com/search?' + new URLSearchParams({ state: gameState.toString(), time: computerThinkTime })
     )
       .then((res) => res.text())
       .then((data) => {
@@ -104,6 +106,20 @@ function App() {
 
   const handleShowNumber = (event) => {
     showNumber = !showNumber;
+  };
+
+  const handleUndoMove = () => {
+    if (myLastMove && gameState.turn === myColor) {
+      let [src, dst] = lastMove;
+      gameState.undoMove(src, dst);
+      [src, dst] = myLastMove;
+      gameState.undoMove(src, dst);
+      moves = gameState.legalMoves();
+      lastMove = null;
+      srcPiece = -1;
+      myLastMove = null;
+      m.redraw();
+    }
   };
 
   window.addEventListener('resize', () => {
@@ -165,14 +181,17 @@ function App() {
           ),
         ]),
         m('div', { class: 'control-area' }, [
-          m('div.line'),
-          m('div.button', { onclick: handleDialogToggle }, [m('i.bi.bi-dice-5-fill'), '新的游戏']),
-          m('div.line'),
-          m('div.button', { onclick: handleCopy }, [m('i.bi.bi-clipboard-check-fill'), '复制棋盘']),
-          m('div.line'),
-          m('div.button', { onclick: handleShowNumber }, [
-            m('i.bi.bi-1-circle-fill'),
-            showNumber ? '隐藏编号' : '显示编号',
+          m('div.button-group', [
+            m('div.button', { onclick: handleDialogToggle }, [m('i.bi.bi-dice-5-fill'), '新游戏']),
+            m('div.line'),
+            m('div.button', { onclick: handleUndoMove }, [m('i.bi.bi-arrow-left-square-fill'), '悔棋']),
+            m('div.line'),
+            m('div.button.copy-board', { onclick: handleCopy }, [m('i.bi.bi-clipboard-check-fill'), '复制棋盘']),
+            m('div.line.copy-board'),
+            m('div.button', { onclick: handleShowNumber }, [
+              m('i.bi.bi-1-circle-fill'),
+              showNumber ? '隐藏编号' : '显示编号',
+            ]),
           ]),
         ]),
         m(

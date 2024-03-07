@@ -28,6 +28,10 @@ class GameState {
     this.state.applyMove({ src, dst });
     this.cacheBoard();
   }
+  undoMove(src, dst) {
+    this.state.undoMove({ src, dst });
+    this.cacheBoard();
+  }
   cacheBoard() {
     const board = this.state.getBoard();
     this.boardCache = [];
