@@ -34,7 +34,7 @@ inline bool operator<(const Move &a, const Move &b) {
   return PIECE_DISTANCES[a.dst] - PIECE_DISTANCES[a.src] < PIECE_DISTANCES[b.dst] - PIECE_DISTANCES[b.src];
 }
 
-cache::lru_cache<uint64_t, TranspositionTableEntry> HASH_TABLE(1 << 22);
+cache::lru_cache<uint64_t, TranspositionTableEntry> HASH_TABLE(4 * 1024 * 1024);
 
 GameState::GameState() : board{0, INITIAL_RED, INITIAL_GREEN}, turn(RED), round(1), zobristHash(0) { hash(); }
 

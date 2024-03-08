@@ -17,6 +17,8 @@ function App() {
   let userSelectColor = RED;
   let userSelectMode = 10;
 
+  localStorage.setItem('color', myColor);
+
   // Event handlers
   const handlePieceClick = (p) => {
     if (gameState.isGameOver()) {
@@ -33,6 +35,7 @@ function App() {
       lastMove = [srcPiece, p];
       srcPiece = -1;
       moves = gameState.legalMoves();
+      localStorage.setItem('board', gameState.toString());
       computerMove();
     }
   };
@@ -52,7 +55,7 @@ function App() {
       m.redraw();
     }, 1000);
     fetch(
-      'http://maoyachen.com/search?' + new URLSearchParams({ state: gameState.toString(), time: computerThinkTime })
+      'http://localhost:1234/search?' + new URLSearchParams({ state: gameState.toString(), time: computerThinkTime })
     )
       .then((res) => res.text())
       .then((data) => {
@@ -84,6 +87,7 @@ function App() {
     srcPiece = -1;
     countDown = 0;
     myColor = parseInt(userSelectColor);
+    localStorage.setItem('color', myColor);
     computerThinkTime = parseInt(userSelectMode);
     if (myColor === GREEN) {
       computerMove();
@@ -128,6 +132,18 @@ function App() {
   });
 
   return {
+    oninit() {
+      const board = localStorage.getItem('board');
+      const color = parseInt(localStorage.getItem('color'));
+      console.log('board', color);
+      if (board && color) {
+        gameState = new GameState(board);
+        myColor = parseInt(color);
+        if (gameState.turn != myColor) {
+          computerMove();
+        }
+      }
+    },
     view() {
       return m('div', { id: 'app' }, [
         m('div', { class: 'info-area' }, [
