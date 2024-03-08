@@ -82,13 +82,11 @@ const std::map<uint128_t, Move> OPENINGS[3] = {
     }};
 
 class GameState {
- private:
+ public:
   uint128_t board[3];
   Color turn;
   int round;
   uint64_t zobristHash;
-
- public:
   GameState();
   GameState(GameState const &gameState);
   explicit GameState(const std::string &state);
