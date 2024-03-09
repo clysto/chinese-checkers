@@ -8,15 +8,12 @@
 
 #include <game.hpp>
 #include <iostream>
+#include <thread>
 
 #include "widgets/Fl_ChessBoard.hpp"
 #include "widgets/Fl_IconButton.hpp"
 
-void styled_line(Fl_Box* line) {
-  line->box(FL_FLAT_BOX);
-  line->color(0x457dd900);
-}
-
+namespace App {
 using FunctionCallback = std::function<void(Fl_Widget* w, void* d)>;
 
 auto adapter = [](Fl_Widget* w, void* data) {
@@ -24,8 +21,15 @@ auto adapter = [](Fl_Widget* w, void* data) {
   (*func)(w, NULL);
 };
 
-int main(int argc, char* argv[]) {
-  Fl::set_font(FL_FREE_FONT, "DejaVu Sans Mono Bold");
+void styled_line(Fl_Box* line) {
+  line->box(FL_FLAT_BOX);
+  line->color(0x457dd900);
+}
+
+void init() { Fl::set_font(FL_FREE_FONT, "DejaVu Sans Mono Bold"); }
+
+int run(int argc, char* argv[]) {
+  init();
   auto window = new Fl_Double_Window(620, 684 + 40, "中国跳棋");
   auto gameArea = new Fl_Flex(0, 0, 620, 684);
   auto game_state = new GameState();
@@ -62,6 +66,7 @@ int main(int argc, char* argv[]) {
     board->set_game_state(game_state);
     delete old_state;
   };
+
   FunctionCallback cb2 = [&board, btn4](Fl_Widget* w, void* d) {
     if (board->number()) {
       board->number(false);
@@ -72,9 +77,25 @@ int main(int argc, char* argv[]) {
     }
   };
 
+  FunctionCallback cb3 = [&board, &game_state](Fl_Widget* w, void* d) {
+    std::thread searchThread([&game_state, &board]() {
+      GameState state = *game_state;
+      Move move = state.searchBestMove(5);
+      Fl::lock();
+      board->move(move);
+      Fl::unlock();
+      Fl::awake();
+    });
+    searchThread.detach();
+  };
+
   btn1->callback(adapter, &cb1);
   btn4->callback(adapter, &cb2);
-  window->size_range(620, 684 + 40, 0, 0);
+  board->callback(adapter, &cb3);
+  window->size_range(400, 500, 0, 0);
   window->show(argc, argv);
   return Fl::run();
 }
+}  // namespace App
+
+int main(int argc, char* argv[]) { return App::run(argc, argv); }

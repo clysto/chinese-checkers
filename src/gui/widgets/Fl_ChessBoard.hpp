@@ -15,9 +15,10 @@ class Fl_ChessBoard : public Fl_Widget {
   int moves[81][81];
   Move last_move;
   bool show_number;
+  int my_color;
 
  public:
-  Fl_ChessBoard(int x, int y, int w, int h);
+  Fl_ChessBoard(int x, int y, int w, int h, int my_color = RED);
   void draw() override;
   virtual int handle(int event) override;
   void set_game_state(GameState *game_state);
@@ -25,6 +26,9 @@ class Fl_ChessBoard : public Fl_Widget {
   void fill_moves();
   void number(bool is_show);
   bool number();
+  void color(int my_color);
+  int color();
+  void move(Move move);
 };
 
 const double CIRCLE_POSITIONS[81][2] = {

@@ -4,7 +4,6 @@ project(ChineseCheckers VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(BUILD_SHARED_LIBS OFF)
 
 find_package(spdlog REQUIRED)
 find_package(FLTK REQUIRED)
@@ -15,7 +14,7 @@ target_link_libraries(chinesecheckers_server spdlog::spdlog)
 target_include_directories(chinesecheckers_server PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 add_executable(chinesecheckers_cli src/cli.cpp src/game.cpp src/game.hpp)
-target_compile_definitions(chinesecheckers_server PUBLIC -DHAVE_SPDLOG)
+target_compile_definitions(chinesecheckers_cli PUBLIC -DHAVE_SPDLOG)
 target_link_libraries(chinesecheckers_cli spdlog::spdlog)
 target_include_directories(chinesecheckers_cli PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -28,10 +27,10 @@ add_executable(chinesecheckers_gui
     src/gui/widgets/Fl_ChessBoard.cpp
     src/gui/widgets/Fl_ChessBoard.hpp
 )
-target_link_libraries(chinesecheckers_gui ${FLTK_LIBRARIES})
+target_compile_definitions(chinesecheckers_gui PUBLIC -DHAVE_SPDLOG)
+target_link_libraries(chinesecheckers_gui ${FLTK_LIBRARIES} spdlog::spdlog)
 target_include_directories(chinesecheckers_gui PRIVATE ${CMAKE_SOURCE_DIR}/src ${FLTK_INCLUDE_DIR})
-# print FLTK_INCLUDE_DIR
-message(STATUS "FLTK_INCLUDE_DIR: ${FLTK_INCLUDE_DIR}")
+
 
 include(ExternalProject)
 ExternalProject_Add(

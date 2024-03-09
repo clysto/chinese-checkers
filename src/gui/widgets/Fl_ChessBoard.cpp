@@ -9,7 +9,7 @@
 
 const double M_SQRT3 = 1.732050807568877293;
 
-Fl_ChessBoard::Fl_ChessBoard(int x, int y, int w, int h)
+Fl_ChessBoard::Fl_ChessBoard(int x, int y, int w, int h, int my_color)
     : Fl_Widget(x, y, w, h),
       scale(1),
       dx(0),
@@ -17,7 +17,8 @@ Fl_ChessBoard::Fl_ChessBoard(int x, int y, int w, int h)
       game_state(nullptr),
       selected_piece(-1),
       last_move{-1, -1},
-      show_number(false) {}
+      show_number(false),
+      my_color(my_color) {}
 
 void Fl_ChessBoard::draw() {
   double radius = 19;
@@ -158,18 +159,26 @@ void Fl_ChessBoard::set_game_state(GameState* game_state) {
 
 void Fl_ChessBoard::handle_circle_click(int index) {
   if (game_state == nullptr) return;
-  if ((game_state->board[game_state->turn] >> index) & 1) {
+  if ((game_state->board[game_state->turn] >> index) & 1 && my_color == game_state->turn) {
     selected_piece = index;
     redraw();
   } else if (selected_piece != -1 && moves[selected_piece][index] == 1) {
-    last_move = {selected_piece, index};
-    game_state->applyMove(last_move);
-    fill_moves();
-    redraw();
+    move({selected_piece, index});
   } else if (selected_piece != -1) {
     selected_piece = -1;
     redraw();
   }
+}
+
+void Fl_ChessBoard::move(Move move) {
+  last_move = move;
+  game_state->applyMove(last_move);
+  selected_piece = -1;
+  fill_moves();
+  if (my_color != game_state->turn) {
+    do_callback();
+  }
+  redraw();
 }
 
 void Fl_ChessBoard::fill_moves() {
@@ -185,3 +194,13 @@ void Fl_ChessBoard::number(bool is_show) {
 }
 
 bool Fl_ChessBoard::number() { return show_number; }
+
+void Fl_ChessBoard::color(int my_color) {
+  this->my_color = my_color;
+  fill_moves();
+  selected_piece = -1;
+  last_move = {-1, -1};
+  redraw();
+}
+
+int Fl_ChessBoard::color() { return my_color; }
