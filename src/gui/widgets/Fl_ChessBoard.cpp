@@ -4,6 +4,8 @@
 #include <FL/Fl_Widget.H>
 #include <FL/fl_draw.H>
 
+#include <cmath>
+#include <cstring>
 #include <iostream>
 #include <vector>
 
@@ -110,6 +112,12 @@ const double STAR_SHAPE[18][2] = {
     {23.9, 529.7},  {4.2, 495.6},   {93, 341.8},    {4.2, 187.9},   {23.9, 153.8},  {201.5, 153.8},
 };
 
+void circle(double x, double y, double r) {
+  fl_begin_polygon();
+  fl_circle(x, y, r);
+  fl_end_polygon();
+}
+
 Fl_ChessBoard::Fl_ChessBoard(int x, int y, int w, int h, int my_color)
     : Fl_Widget(x, y, w, h),
       scale(1),
@@ -155,12 +163,12 @@ void Fl_ChessBoard::draw() {
     if (game_state && board[i] == RED) {
       if ((game_state->turn == RED && selected_piece == i) || last_move.dst == i) {
         fl_color(0xffafaf00);
-        fl_circle(cx, cy, radius + scale);
+        circle(cx, cy, radius + scale);
         fl_color(0xe5000000);
-        fl_circle(cx, cy, radius - 3 * scale);
+        circle(cx, cy, radius - 3 * scale);
       } else {
         fl_color(0xe5000000);
-        fl_circle(cx, cy, radius);
+        circle(cx, cy, radius);
       }
       if (show_number) {
         fl_color(0x89000000);
@@ -170,12 +178,12 @@ void Fl_ChessBoard::draw() {
     } else if (game_state && board[i] == GREEN) {
       if ((game_state->turn == GREEN && selected_piece == i) || last_move.dst == i) {
         fl_color(0xcfffcf00);
-        fl_circle(cx, cy, radius + scale);
+        circle(cx, cy, radius + scale);
         fl_color(0x35cc3500);
-        fl_circle(cx, cy, radius - 3 * scale);
+        circle(cx, cy, radius - 3 * scale);
       } else {
         fl_color(0x35cc3500);
-        fl_circle(cx, cy, radius);
+        circle(cx, cy, radius);
       }
       if (show_number) {
         fl_color(0x207a2000);
@@ -186,7 +194,7 @@ void Fl_ChessBoard::draw() {
       double r = radius;
       if (game_state && last_move.src == i) {
         fl_color(game_state->turn == RED ? 0xcfffcf00 : 0xffafaf00);
-        fl_circle(cx, cy, r + scale);
+        circle(cx, cy, r + scale);
         r -= 3 * scale;
       }
       if (selected_piece >= 0 && moves[selected_piece][i] == 1) {
@@ -194,7 +202,7 @@ void Fl_ChessBoard::draw() {
       } else {
         fl_color(0x977d5a00);
       }
-      fl_circle(cx, cy, r);
+      circle(cx, cy, r);
       if (show_number) {
         fl_color(0x5b4b3600);
         fl_draw(std::to_string(i).c_str(), std::round(cx - radius), std::round(cy - radius + scale),
@@ -206,7 +214,7 @@ void Fl_ChessBoard::draw() {
   for (int i = 0; i < 40; i++) {
     double cx = FAKE_CIRCLE_POSITIONS[i][0] * scale + dx;
     double cy = FAKE_CIRCLE_POSITIONS[i][1] * scale + dy;
-    fl_circle(cx, cy, radius);
+    circle(cx, cy, radius);
   }
 }
 

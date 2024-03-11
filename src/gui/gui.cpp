@@ -6,6 +6,7 @@
 #include <FL/Fl_SVG_Image.H>
 #include <FL/fl_draw.H>
 
+#include <functional>
 #include <game.hpp>
 #include <iostream>
 #include <thread>
