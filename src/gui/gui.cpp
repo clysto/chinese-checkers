@@ -10,6 +10,7 @@
 #include <iostream>
 #include <thread>
 
+#include "utils.hpp"
 #include "widgets/Fl_ChessBoard.hpp"
 #include "widgets/Fl_IconButton.hpp"
 
@@ -26,7 +27,10 @@ void styled_line(Fl_Box* line) {
   line->color(0x457dd900);
 }
 
-void init() { Fl::set_font(FL_FREE_FONT, "DejaVu Sans Mono Bold"); }
+void init() {
+  Fl_load_font("RubikMonoOne-Regular.ttf");
+  Fl::set_font(FL_FREE_FONT, "Rubik Mono One Regular");
+}
 
 int run(int argc, char* argv[]) {
   init();

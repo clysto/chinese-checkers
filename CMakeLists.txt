@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 find_package(spdlog REQUIRED)
-find_package(FLTK REQUIRED)
+find_package(FLTK CONFIG REQUIRED)
 
 add_executable(chinesecheckers_server src/server.cpp src/httplib.h src/game.cpp src/game.hpp)
 target_compile_definitions(chinesecheckers_server PUBLIC -DHAVE_SPDLOG)
@@ -20,6 +20,8 @@ target_include_directories(chinesecheckers_cli PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 add_executable(chinesecheckers_gui
     src/gui/gui.cpp
+    src/gui/utils.cpp
+    src/gui/utils.hpp
     src/game.cpp
     src/game.hpp
     src/gui/widgets/Fl_IconButton.cpp
@@ -28,9 +30,8 @@ add_executable(chinesecheckers_gui
     src/gui/widgets/Fl_ChessBoard.hpp
 )
 target_compile_definitions(chinesecheckers_gui PUBLIC -DHAVE_SPDLOG)
-target_link_libraries(chinesecheckers_gui ${FLTK_LIBRARIES} spdlog::spdlog)
-target_include_directories(chinesecheckers_gui PRIVATE ${CMAKE_SOURCE_DIR}/src ${FLTK_INCLUDE_DIR})
-
+target_link_libraries(chinesecheckers_gui fltk::fltk fltk::images spdlog::spdlog)
+target_include_directories(chinesecheckers_gui PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 include(ExternalProject)
 ExternalProject_Add(

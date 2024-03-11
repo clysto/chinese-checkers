@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <map>
 using uint128_t = __uint128_t;
 uint64_t ZOBRIST_TABLE[81][3] = {
