@@ -29,6 +29,7 @@ void styled_line(Fl_Box* line) {
 }
 
 void init() {
+  Fl::lock();
   Fl_load_font("RubikMonoOne-Regular.ttf");
   Fl::set_font(FL_FREE_FONT, "Rubik Mono One Regular");
 }
