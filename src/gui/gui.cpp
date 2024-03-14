@@ -11,6 +11,7 @@
 #include <iostream>
 #include <thread>
 
+#include "fonts/RubikMonoOne-Regular.h"
 #include "utils.hpp"
 #include "widgets/Fl_ChessBoard.hpp"
 #include "widgets/Fl_IconButton.hpp"
@@ -30,7 +31,7 @@ void styled_line(Fl_Box* line) {
 
 void init() {
   Fl::lock();
-  Fl_load_font("RubikMonoOne-Regular.ttf");
+  Fl_load_memory_font((const char*)RubikMonoOne_Regular_ttf, RubikMonoOne_Regular_ttf_len);
   Fl::set_font(FL_FREE_FONT, "Rubik Mono One Regular");
 }
 

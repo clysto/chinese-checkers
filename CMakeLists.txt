@@ -19,7 +19,7 @@ target_compile_definitions(chinesecheckers_cli PUBLIC -DHAVE_SPDLOG)
 target_link_libraries(chinesecheckers_cli spdlog::spdlog)
 target_include_directories(chinesecheckers_cli PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
-add_executable(chinesecheckers_gui
+set(APP_SOURCES
     src/gui/gui.cpp
     src/gui/utils.cpp
     src/gui/utils.hpp
@@ -30,9 +30,25 @@ add_executable(chinesecheckers_gui
     src/gui/widgets/Fl_ChessBoard.cpp
     src/gui/widgets/Fl_ChessBoard.hpp
 )
+set(MACOSX_BUNDLE_ICON_FILE chinesecheckers.icns)
+set(MACOSX_BUNDLE_ICON_PATH ${CMAKE_CURRENT_LIST_DIR}/misc/chinesecheckers.icns)
+set_source_files_properties(${MACOSX_BUNDLE_ICON_PATH} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+
+if(APPLE)
+    add_executable(chinesecheckers_gui MACOSX_BUNDLE ${MACOSX_BUNDLE_ICON_PATH} ${APP_SOURCES})
+else()
+    add_executable(chinesecheckers_gui ${APP_SOURCES})
+endif()
+
 target_compile_definitions(chinesecheckers_gui PUBLIC -DHAVE_SPDLOG)
 target_link_libraries(chinesecheckers_gui fltk::fltk fltk::images spdlog::spdlog)
 target_include_directories(chinesecheckers_gui PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+set_target_properties(chinesecheckers_gui PROPERTIES
+    MACOSX_BUNDLE on
+    WIN32_EXECUTABLE on
+    OUTPUT_NAME "Chinese Checkers"
+)
 
 include(ExternalProject)
 ExternalProject_Add(
