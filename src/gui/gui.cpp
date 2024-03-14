@@ -38,15 +38,15 @@ void init() {
 #if defined(_WIN32)
   Fl::set_font(FL_HELVETICA, "微软雅黑");
   Fl::set_font(FL_HELVETICA_BOLD, "微软雅黑 Bold");
+  Fl_PNG_Image* icon = new Fl_PNG_Image("icon.png", (const unsigned char*)chinesecheckers_png, chinesecheckers_png_len);
+  Fl_Double_Window::default_icon(icon);
+  delete icon;
 #endif
 }
 
-Fl_PNG_Image* icon = new Fl_PNG_Image("icon.png", (const unsigned char*)chinesecheckers_png, chinesecheckers_png_len);
-
 int run(int argc, char* argv[]) {
   init();
-  auto window = new Fl_Double_Window(620, 684 + 40, "中国跳棋");
-  window->icon(icon);
+  auto window = new Fl_Double_Window(620, 684 + 40, "中国跳棋");  
   auto gameArea = new Fl_Flex(0, 0, 620, 684);
   auto game_state = new GameState();
   gameArea->box(FL_FLAT_BOX);
