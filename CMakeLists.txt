@@ -37,7 +37,7 @@ set_source_files_properties(${MACOSX_BUNDLE_ICON_PATH} PROPERTIES MACOSX_PACKAGE
 if(APPLE)
     add_executable(chinesecheckers_gui MACOSX_BUNDLE ${MACOSX_BUNDLE_ICON_PATH} ${APP_SOURCES})
 else()
-    add_executable(chinesecheckers_gui ${APP_SOURCES})
+    add_executable(chinesecheckers_gui ${APP_SOURCES} misc/chinesecheckers.rc)
 endif()
 
 target_compile_definitions(chinesecheckers_gui PUBLIC -DHAVE_SPDLOG)

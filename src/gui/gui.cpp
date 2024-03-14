@@ -3,6 +3,7 @@
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Flex.H>
+#include <FL/Fl_PNG_Image.H>
 #include <FL/Fl_SVG_Image.H>
 #include <FL/fl_draw.H>
 
@@ -12,6 +13,7 @@
 #include <thread>
 
 #include "fonts/RubikMonoOne-Regular.h"
+#include "fonts/icon.h"
 #include "utils.hpp"
 #include "widgets/Fl_ChessBoard.hpp"
 #include "widgets/Fl_IconButton.hpp"
@@ -33,11 +35,18 @@ void init() {
   Fl::lock();
   Fl_load_memory_font((const char*)RubikMonoOne_Regular_ttf, RubikMonoOne_Regular_ttf_len);
   Fl::set_font(FL_FREE_FONT, "Rubik Mono One Regular");
+#if defined(_WIN32)
+  Fl::set_font(FL_HELVETICA, "微软雅黑");
+  Fl::set_font(FL_HELVETICA_BOLD, "微软雅黑 Bold");
+#endif
 }
+
+Fl_PNG_Image* icon = new Fl_PNG_Image("icon.png", (const unsigned char*)chinesecheckers_png, chinesecheckers_png_len);
 
 int run(int argc, char* argv[]) {
   init();
   auto window = new Fl_Double_Window(620, 684 + 40, "中国跳棋");
+  window->icon(icon);
   auto gameArea = new Fl_Flex(0, 0, 620, 684);
   auto game_state = new GameState();
   gameArea->box(FL_FLAT_BOX);
