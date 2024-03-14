@@ -7,13 +7,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <cstdint>
+
 #ifdef _WIN32
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0501 /* need at least WinXP for this API, I think */
 #endif
+#include <windows.h>
 #define i_load_private_font(PATH) AddFontResourceEx((PATH), FR_PRIVATE, 0)
 #define v_unload_private_font(PATH) RemoveFontResourceEx((PATH), FR_PRIVATE, 0)
-#include <windows.h>
+DWORD _count;
+#define i_load_private_memory_font(DATA, LENGTH) \
+  reinterpret_cast<std::uintptr_t>(AddFontMemResourceEx((void *)(DATA), (LENGTH), 0, &_count))
 #elif __APPLE__
 #include <ApplicationServices/ApplicationServices.h>
 static int i_load_private_font(const char *pf) {
@@ -40,6 +45,24 @@ static void v_unload_private_font(const char *pf) {
   CTFontManagerUnregisterFontsForURL(fontURL, kCTFontManagerScopeProcess, &err);
   if (fontURL) CFRelease(fontURL);
 }  // v_unload_private_font
+
+static int i_load_private_memory_font(const char *data, int length) {
+  int result = 0;
+  CFErrorRef err;
+  CFDataRef fontData = CFDataCreate(kCFAllocatorDefault, (const UInt8 *)data, length);
+  CGDataProviderRef provider = CGDataProviderCreateWithCFData(fontData);
+  CGFontRef font = CGFontCreateWithDataProvider(provider);
+  if (CTFontManagerRegisterGraphicsFont(font, &err)) {
+    result = 1;  // OK, we loaded the font, set this non-zero
+  } else {
+    printf("Failed loading font from memory\n");
+  }
+  if (font) CFRelease(font);
+  if (provider) CFRelease(provider);
+  if (fontData) CFRelease(fontData);
+  return result;
+}  // Fl_load_memory_font
+
 #elif __ANDROID__
 // Nothing!
 #else /* Assume X11 with XFT/fontconfig - this will break on systems using \
@@ -57,6 +80,14 @@ static void v_unload_private_font(const char *pf) {
 int Fl_load_font(const char *path) {
 #ifndef __ANDROID__
   return i_load_private_font(path);
+#else
+  return 0;
+#endif
+}
+
+int Fl_load_memory_font(const char *data, int length) {
+#ifndef __ANDROID__
+  return i_load_private_memory_font(data, length);
 #else
   return 0;
 #endif
