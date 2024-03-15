@@ -17,7 +17,7 @@
 #define i_load_private_font(PATH) AddFontResourceEx((PATH), FR_PRIVATE, 0)
 #define v_unload_private_font(PATH) RemoveFontResourceEx((PATH), FR_PRIVATE, 0)
 DWORD _count;
-#define i_load_private_memory_font(DATA, LENGTH) \
+#define i_load_private_memory_font(NAME, DATA, LENGTH) \
   reinterpret_cast<std::uintptr_t>(AddFontMemResourceEx((void *)(DATA), (LENGTH), 0, &_count))
 #elif __APPLE__
 #include <ApplicationServices/ApplicationServices.h>
@@ -46,7 +46,7 @@ static void v_unload_private_font(const char *pf) {
   if (fontURL) CFRelease(fontURL);
 }  // v_unload_private_font
 
-static int i_load_private_memory_font(const char *data, int length) {
+static int i_load_private_memory_font(const char *name, const char *data, int length) {
   int result = 0;
   CFErrorRef err;
   CFDataRef fontData = CFDataCreate(kCFAllocatorDefault, (const UInt8 *)data, length);
@@ -68,9 +68,36 @@ static int i_load_private_memory_font(const char *data, int length) {
 #else /* Assume X11 with XFT/fontconfig - this will break on systems using \
          legacy Xlib fonts */
 #include <fontconfig/fontconfig.h>
+#include <freetype/freetype.h>
 #define USE_XFT 1
+#include <fontconfig/fcfreetype.h>
 #define i_load_private_font(PATH) (int)FcConfigAppFontAddFile(nullptr, (const FcChar8 *)(PATH))
 #define v_unload_private_font(PATH) FcConfigAppFontClear(nullptr)
+FT_Library _fl_library = nullptr;
+static int i_load_private_memory_font(const char *name, const char *data, int length) {
+  FT_Face face;
+  FcPattern *pattern;
+  FcFontSet *set = FcConfigGetFonts(nullptr, FcSetApplication);
+  FT_Error error;
+  if (!set) {
+    FcConfigAppFontAddFile(nullptr, (const FcChar8 *)":/non-existent");
+    set = FcConfigGetFonts(nullptr, FcSetApplication);
+    if (!set) {
+      return 0;
+    }
+  }
+  if (!_fl_library) {
+    error = FT_Init_FreeType(&_fl_library);
+    if (error) {
+      return 0;
+    }
+  }
+  FT_New_Memory_Face(_fl_library, (const FT_Byte *)data, length, 0, &face);
+  pattern = FcFreeTypeQueryFace(face, (const FcChar8 *)name, 0, nullptr);
+  FcPatternAddFTFace(pattern, FC_FT_FACE, face);
+  FcFontSetAdd(set, pattern);
+  return 1;
+}
 #endif
 
 #if defined(_MSC_VER) && _MSC_VER < 1900
@@ -85,9 +112,9 @@ int Fl_load_font(const char *path) {
 #endif
 }
 
-int Fl_load_memory_font(const char *data, int length) {
+int Fl_load_memory_font(const char *name, const char *data, int length) {
 #ifndef __ANDROID__
-  return i_load_private_memory_font(data, length);
+  return i_load_private_memory_font(name, data, length);
 #else
   return 0;
 #endif

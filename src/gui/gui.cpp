@@ -33,7 +33,7 @@ void styled_line(Fl_Box* line) {
 
 void init() {
   Fl::lock();
-  Fl_load_memory_font((const char*)RubikMonoOne_Regular_ttf, RubikMonoOne_Regular_ttf_len);
+  Fl_load_memory_font("RubicMonoOne.ttf", (const char*)RubikMonoOne_Regular_ttf, RubikMonoOne_Regular_ttf_len);
   Fl::set_font(FL_FREE_FONT, "Rubik Mono One Regular");
 #if defined(_WIN32)
   Fl::set_font(FL_HELVETICA, "微软雅黑");

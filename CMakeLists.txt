@@ -36,12 +36,43 @@ set_source_files_properties(${MACOSX_BUNDLE_ICON_PATH} PROPERTIES MACOSX_PACKAGE
 
 if(APPLE)
     add_executable(chinesecheckers_gui MACOSX_BUNDLE ${MACOSX_BUNDLE_ICON_PATH} ${APP_SOURCES})
-else()
+    target_link_libraries(chinesecheckers_gui fltk::fltk fltk::images spdlog::spdlog Freetype::Freetype)
+elseif(WIN32)
     add_executable(chinesecheckers_gui ${APP_SOURCES} misc/chinesecheckers.rc)
+    target_link_libraries(chinesecheckers_gui fltk::fltk fltk::images spdlog::spdlog Freetype::Freetype)
+elseif(LINUX)
+    set_target_properties(fltk::fltk PROPERTIES
+        INTERFACE_LINK_LIBRARIES ""
+    )
+    add_executable(chinesecheckers_gui ${APP_SOURCES})
+    target_link_libraries(chinesecheckers_gui
+        fltk::fltk
+        fltk::images
+        spdlog::spdlog
+        /opt/pango-1.52.1/lib/x86_64-linux-gnu/libpangocairo-1.0.a
+        /opt/pango-1.52.1/lib/x86_64-linux-gnu/libpangoft2-1.0.a
+        /opt/pango-1.52.1/lib/x86_64-linux-gnu/libpango-1.0.a
+        /usr/lib/x86_64-linux-gnu/libcairo.so
+        /usr/lib/x86_64-linux-gnu/libdl.a
+        /usr/lib/x86_64-linux-gnu/libSM.so
+        /usr/lib/x86_64-linux-gnu/libICE.so
+        /usr/lib/x86_64-linux-gnu/libX11.so
+        /usr/lib/x86_64-linux-gnu/libXext.so
+        /usr/lib/x86_64-linux-gnu/libXrender.so
+        /usr/lib/x86_64-linux-gnu/libfreetype.so
+        /usr/lib/x86_64-linux-gnu/libcairo.so
+        /usr/lib/x86_64-linux-gnu/libgobject-2.0.so
+        /usr/lib/x86_64-linux-gnu/libgio-2.0.so
+        /usr/lib/x86_64-linux-gnu/libglib-2.0.so
+        /usr/lib/x86_64-linux-gnu/libharfbuzz.so
+        /usr/lib/x86_64-linux-gnu/libfribidi.so
+        /usr/lib/x86_64-linux-gnu/libthai.so
+        /usr/lib/x86_64-linux-gnu/libXft.so
+        /usr/lib/x86_64-linux-gnu/libfontconfig.so
+    )
 endif()
 
 target_compile_definitions(chinesecheckers_gui PUBLIC -DHAVE_SPDLOG)
-target_link_libraries(chinesecheckers_gui fltk::fltk fltk::images spdlog::spdlog)
 target_include_directories(chinesecheckers_gui PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 set_target_properties(chinesecheckers_gui PROPERTIES
