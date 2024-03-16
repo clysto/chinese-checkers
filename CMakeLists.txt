@@ -36,10 +36,10 @@ set_source_files_properties(${MACOSX_BUNDLE_ICON_PATH} PROPERTIES MACOSX_PACKAGE
 
 if(APPLE)
     add_executable(chinesecheckers_gui MACOSX_BUNDLE ${MACOSX_BUNDLE_ICON_PATH} ${APP_SOURCES})
-    target_link_libraries(chinesecheckers_gui fltk::fltk fltk::images spdlog::spdlog Freetype::Freetype)
+    target_link_libraries(chinesecheckers_gui fltk::fltk fltk::images spdlog::spdlog)
 elseif(WIN32)
     add_executable(chinesecheckers_gui ${APP_SOURCES} misc/chinesecheckers.rc)
-    target_link_libraries(chinesecheckers_gui fltk::fltk fltk::images spdlog::spdlog Freetype::Freetype)
+    target_link_libraries(chinesecheckers_gui fltk::fltk fltk::images spdlog::spdlog)
 elseif(LINUX)
     set_target_properties(fltk::fltk PROPERTIES
         INTERFACE_LINK_LIBRARIES ""
