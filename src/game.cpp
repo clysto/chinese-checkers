@@ -247,24 +247,15 @@ Move GameState::searchBestMove(int timeLimit) {
   int depth = 1, eval = -INF, bestEval = -INF;
   Move move = NULL_MOVE, bestMove = NULL_MOVE;
   auto deadline = SECONDS_LATER(timeLimit);
-  MovePath pline;
   while (depth < 100) {
-    pline.moves.clear();
     bestEval = eval;
     bestMove = move;
-    eval = mtdf(*this, depth, eval, pline, deadline);
+    eval = mtdf(*this, depth, eval, deadline);
     uint64_t h = hash();
     move = HASH_TABLE.get(h).bestMove;
 #ifdef HAVE_SPDLOG
     spdlog::info("complete search depth: {}, score: {}, move: {} {}", depth, eval, move.src, move.dst);
 #endif
-    auto tempState = *this;
-    while (HASH_TABLE.exists(h)) {
-      auto result = HASH_TABLE.get(h);
-      pline.moves.push_back(result.bestMove);
-      tempState.applyMove(result.bestMove);
-      h = tempState.hash();
-    }
     if (eval > 9999 || NOW >= deadline) {
       // 找到胜利着法
       break;
@@ -281,24 +272,25 @@ Move GameState::searchBestMove(int timeLimit) {
   return bestMove;
 }
 
-int mtdf(GameState &gameState, int depth, int guess, MovePath &pline, time_point_t deadline) {
+int mtdf(GameState &gameState, int depth, int guess, time_point_t deadline) {
   int beta;
   int upperbound = INF;
   int lowerbound = -INF;
   int score = guess;
   do {
     beta = (score == lowerbound ? score + 1 : score);
-    pline.index = 0;
-    score = alphaBetaSearch(gameState, depth, beta - 1, beta, pline, deadline);
+    score = alphaBetaSearch(gameState, depth, beta - 1, beta, deadline);
     (score < beta ? upperbound : lowerbound) = score;
   } while (lowerbound < upperbound);
   return score;
 }
 
-int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, MovePath &pline, time_point_t deadline) {
+int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_point_t deadline) {
   // 查询置换表
   uint64_t hash = gameState.hash();
   int alphaOrig = alpha;
+  Move bestMove = NULL_MOVE;
+
   if (HASH_TABLE.exists(hash)) {
     auto result = HASH_TABLE.get(hash);
     if (result.depth >= depth) {
@@ -313,6 +305,9 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, MovePa
         return result.value;
       }
     }
+    if (result.bestMove.src >= 0) {
+      bestMove = result.bestMove;
+    }
   }
 
   // 叶子结点
@@ -320,13 +315,12 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, MovePa
     return gameState.evaluate();
   }
 
-  Move bestMove = NULL_MOVE;
   HashFlag flag;
-  int value = -INF;
   auto moves = gameState.legalMoves();
-  // 优先上一次搜索的最佳着法
-  if (pline.index != pline.moves.size()) {
-    moves.insert(moves.begin(), pline.moves[pline.index++]);
+  int value = -INF;
+  // 优先搜索历史最佳着法
+  if (bestMove.src >= 0) {
+    moves.insert(moves.begin(), bestMove);
   }
   for (Move move : moves) {
     // 跳过向后走两步及其以上的着法
@@ -336,7 +330,7 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, MovePa
       continue;
     }
     gameState.applyMove(move);
-    int current = -alphaBetaSearch(gameState, depth - 1, -beta, -alpha, pline, deadline);
+    int current = -alphaBetaSearch(gameState, depth - 1, -beta, -alpha, deadline);
     gameState.undoMove(move);
     if (current > value) {
       value = current;

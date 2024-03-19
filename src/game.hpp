@@ -103,10 +103,5 @@ class GameState {
   uint64_t hash();
 };
 
-struct MovePath {
-  std::vector<Move> moves;
-  int index;
-};
-
-int mtdf(GameState &gameState, int depth, int guess, MovePath &pline, time_point_t deadline);
-int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, MovePath &pline, time_point_t deadline);
+int mtdf(GameState &gameState, int depth, int guess, time_point_t deadline);
+int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_point_t deadline);

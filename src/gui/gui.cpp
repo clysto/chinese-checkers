@@ -46,7 +46,9 @@ void init() {
 
 int run(int argc, char* argv[]) {
   init();
-  auto window = new Fl_Double_Window(620, 684 + 40, "中国跳棋");  
+  int center_x = (Fl::w() - 620) / 2;
+  int center_y = (Fl::h() - 724) / 2;
+  auto window = new Fl_Double_Window(center_x, center_y, 620, 724, "中国跳棋");
   auto gameArea = new Fl_Flex(0, 0, 620, 684);
   auto game_state = new GameState();
   gameArea->box(FL_FLAT_BOX);
@@ -96,7 +98,7 @@ int run(int argc, char* argv[]) {
   FunctionCallback cb3 = [&board, &game_state](Fl_Widget* w, void* d) {
     std::thread searchThread([&game_state, &board]() {
       GameState state = *game_state;
-      Move move = state.searchBestMove(5);
+      Move move = state.searchBestMove(10);
       Fl::lock();
       board->move(move);
       Fl::unlock();
