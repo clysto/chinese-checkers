@@ -156,7 +156,7 @@ void Fl_ChessBoard::draw() {
   }
   fl_end_complex_polygon();
   fl_color(0x977d5a00);
-  fl_font(FL_FREE_FONT, std::round(16 * scale));
+  fl_font(FL_FREE_FONT, 16 * scale);
   int text_dx, text_dy, text_width, text_height;
   for (int i = 0; i < 81; i++) {
     double cx = CIRCLE_POSITIONS[i][0] * scale + dx;
@@ -174,8 +174,9 @@ void Fl_ChessBoard::draw() {
       if (show_number) {
         fl_color(0x89000000);
         fl_text_extents(std::to_string(i).c_str(), text_dx, text_dy, text_width, text_height);
-        fl_draw(std::to_string(i).c_str(), std::round(cx - text_dx - text_width / 2),
-                std::round(cy - text_dy - text_height / 2));
+        fl_graphics_driver->draw(std::to_string(i).c_str(), std::to_string(i).size(),
+                                 (float)(cx - text_dx - (float)text_width / 2),
+                                 (float)(cy - text_dy - (float)text_height / 2));
       }
     } else if (game_state && board[i] == GREEN) {
       if ((game_state->turn == GREEN && selected_piece == i) || last_move.dst == i) {
@@ -189,8 +190,10 @@ void Fl_ChessBoard::draw() {
       }
       if (show_number) {
         fl_color(0x207a2000);
-        fl_draw(std::to_string(i).c_str(), std::round(cx - radius), std::round(cy - radius + scale),
-                std::round(2 * radius), std::round(2 * radius), FL_ALIGN_CENTER | FL_ALIGN_INSIDE);
+        fl_text_extents(std::to_string(i).c_str(), text_dx, text_dy, text_width, text_height);
+        fl_graphics_driver->draw(std::to_string(i).c_str(), std::to_string(i).size(),
+                                 (float)(cx - text_dx - (float)text_width / 2),
+                                 (float)(cy - text_dy - (float)text_height / 2));
       }
     } else {
       double r = radius;
@@ -207,8 +210,10 @@ void Fl_ChessBoard::draw() {
       circle(cx, cy, r);
       if (show_number) {
         fl_color(0x5b4b3600);
-        fl_draw(std::to_string(i).c_str(), std::round(cx - radius), std::round(cy - radius + scale),
-                std::round(2 * radius), std::round(2 * radius), FL_ALIGN_CENTER | FL_ALIGN_INSIDE);
+        fl_text_extents(std::to_string(i).c_str(), text_dx, text_dy, text_width, text_height);
+        fl_graphics_driver->draw(std::to_string(i).c_str(), std::to_string(i).size(),
+                                 (float)(cx - text_dx - (float)text_width / 2),
+                                 (float)(cy - text_dy - (float)text_height / 2));
       }
     }
   }
