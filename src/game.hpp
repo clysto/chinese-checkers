@@ -94,6 +94,7 @@ class GameState {
   std::vector<int> getBoard();
   Color getTurn() const;
   std::vector<Move> legalMoves();
+  std::vector<Move> sortedLegalMoves(int depth, Move historyBestMove);
   void jumpMoves(int src, uint128_t &to);
   void applyMove(Move move);
   void undoMove(Move move);

@@ -123,34 +123,66 @@ Color GameState::getTurn() const { return turn; }
 
 std::vector<Move> GameState::legalMoves() {
   std::vector<Move> moves;
-  int min_distance = INF;
-  int max_distance = -INF;
-  int distance = 0;
-  int min_index = 0;
-  int max_index = 0;
+  uint128_t from = board[turn];
+  SCAN_REVERSE_START(from, src)
+  uint128_t to = ADJ_POSITIONS[pos_src] & ~(board[RED] | board[GREEN]);
+  jumpMoves(pos_src, to);
+  SCAN_REVERSE_START(to, dst)
+  moves.push_back({pos_src, pos_dst});
+  SCAN_REVERSE_END(to, dst)
+  SCAN_REVERSE_END(from, src)
+  return moves;
+}
+
+std::vector<Move> GameState::sortedLegalMoves(int depth, Move historyBestMove) {
+  std::vector<Move> moves;
+  int min_distance = INF, max_distance = -INF;
+  int distance = 0, min_index = 0, max_index = 0;
+  bool killer1Legal = false, killer2Legal = false;
   uint128_t from = board[turn];
   SCAN_REVERSE_START(from, src)
   uint128_t to = ADJ_POSITIONS[pos_src] & ~(board[RED] | board[GREEN]);
   jumpMoves(pos_src, to);
   SCAN_REVERSE_START(to, dst)
   distance = PIECE_DISTANCES[pos_dst] - PIECE_DISTANCES[pos_src];
-  if (distance > max_distance) {
-    max_distance = distance;
-    max_index = moves.size();
+  if (KILLER_TABLE[depth][0].src == pos_src && KILLER_TABLE[depth][0].dst == pos_dst) {
+    killer1Legal = true;
+  } else if (KILLER_TABLE[depth][1].src == pos_src && KILLER_TABLE[depth][1].dst == pos_dst) {
+    killer2Legal = true;
+  } else {
+    // 跳过向后走两步及其以上的着法
+    if (turn == GREEN && PIECE_DISTANCES[pos_dst] - PIECE_DISTANCES[pos_src] <= -2) {
+    } else if (turn == RED && PIECE_DISTANCES[pos_src] - PIECE_DISTANCES[pos_dst] <= -2) {
+    } else {
+      if (distance > max_distance) {
+        max_distance = distance;
+        max_index = moves.size();
+      }
+      if (distance < min_distance) {
+        min_distance = distance;
+        min_index = moves.size();
+      }
+      moves.push_back({pos_src, pos_dst});
+    }
   }
-  if (distance < min_distance) {
-    min_distance = distance;
-    min_index = moves.size();
-  }
-  moves.push_back({pos_src, pos_dst});
   SCAN_REVERSE_END(to, dst)
   SCAN_REVERSE_END(from, src)
-  // 这里把最大距离的着法放到最后，以便在 Alpha-Beta 剪枝时能够先搜索最大距离的着法
-  // 放在最后的着法会被优先搜索
+  // 把最大距离的着法放到最后
   if (turn == GREEN) {
     std::iter_swap(moves.begin() + max_index, moves.end() - 1);
   } else {
     std::iter_swap(moves.begin() + min_index, moves.end() - 1);
+  }
+  // 把 Killer 着法放到最后面
+  if (killer2Legal) {
+    moves.push_back(KILLER_TABLE[depth][1]);
+  }
+  if (killer1Legal) {
+    moves.push_back(KILLER_TABLE[depth][0]);
+  }
+  // 把历史最佳着法放到最后面
+  if (historyBestMove.src >= 0) {
+    moves.push_back(historyBestMove);
   }
   return moves;
 }
@@ -344,30 +376,11 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
 
   HashFlag flag;
   Move opponentMove, move;
-  auto moves = gameState.legalMoves();
+  auto moves = gameState.sortedLegalMoves(depth, bestMove);
   int value = -INF;
-  // 搜索 Killer 着法
-  for (int i = 0; i < 2; i++) {
-    if (KILLER_TABLE[depth][i].src >= 0) {
-      // 判断 Killer 着法是否合法
-      if (std::find(moves.begin(), moves.end(), KILLER_TABLE[depth][i]) != moves.end()) {
-        moves.push_back(KILLER_TABLE[depth][i]);
-      }
-    }
-  }
-  // 优先搜索历史最佳着法
-  if (bestMove.src >= 0) {
-    moves.push_back(bestMove);
-  }
   // reverse search moves
   for (auto it = moves.rbegin(); it != moves.rend(); it++) {
     move = *it;
-    // 跳过向后走两步及其以上的着法
-    if (gameState.getTurn() == GREEN && PIECE_DISTANCES[move.dst] - PIECE_DISTANCES[move.src] <= -2) {
-      continue;
-    } else if (gameState.getTurn() == RED && PIECE_DISTANCES[move.src] - PIECE_DISTANCES[move.dst] <= -2) {
-      continue;
-    }
     gameState.applyMove(move);
     int current = -alphaBetaSearch(gameState, depth - 1, -beta, -alpha, deadline, opponentMove);
     gameState.undoMove(move);
