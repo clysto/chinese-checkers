@@ -159,8 +159,14 @@ void Fl_ChessBoard::draw() {
   fl_font(FL_FREE_FONT, 16 * scale);
   int text_dx, text_dy, text_width, text_height;
   for (int i = 0; i < 81; i++) {
-    double cx = CIRCLE_POSITIONS[i][0] * scale + dx;
-    double cy = CIRCLE_POSITIONS[i][1] * scale + dy;
+    double cx, cy;
+    if (my_color == RED) {
+      cx = CIRCLE_POSITIONS[i][0] * scale + dx;
+      cy = CIRCLE_POSITIONS[i][1] * scale + dy;
+    } else {
+      cx = CIRCLE_POSITIONS[80 - i][0] * scale + dx;
+      cy = CIRCLE_POSITIONS[80 - i][1] * scale + dy;
+    }
     if (game_state && board[i] == RED) {
       if ((game_state->turn == RED && selected_piece == i) || last_move.dst == i) {
         fl_color(0xffafaf00);
@@ -250,6 +256,9 @@ int Fl_ChessBoard::handle(int event) {
       target_y = CIRCLE_POSITIONS[click_number][1] * scale + dy;
 
       if ((x - target_x) * (x - target_x) + (y - target_y) * (y - target_y) < 19 * 19 * scale * scale) {
+        if (my_color == GREEN) {
+          click_number = 80 - click_number;
+        }
         handle_circle_click(click_number);
       } else {
         selected_piece = -1;

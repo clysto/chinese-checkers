@@ -1,6 +1,7 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Button.H>
+#include <FL/Fl_Choice.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Flex.H>
 #include <FL/Fl_PNG_Image.H>
@@ -22,6 +23,8 @@
 
 namespace App {
 using cb_t = std::function<void(Fl_Widget* w)>;
+
+int COMPUTER_THINK_TIME[3] = {5, 10, 15};
 
 auto adapter = [](Fl_Widget* w, void* data) {
   cb_t* func = reinterpret_cast<cb_t*>(data);
@@ -53,6 +56,7 @@ int run(int argc, char* argv[]) {
   auto window = new Fl_Double_Window(center_x, center_y, 620, 724, "中国跳棋");
   auto gameArea = new Fl_Flex(0, 0, 620, 684);
   int my_color = RED;
+  int difficulty = 1;
   std::stack<Move> history;
   auto game_state = new GameState();
   gameArea->box(FL_FLAT_BOX);
@@ -83,12 +87,66 @@ int run(int argc, char* argv[]) {
   window->resizable(gameArea);
   window->end();
 
-  cb_t cb1 = [&game_state, &board, &history](Fl_Widget* w) {
-    auto old_state = game_state;
-    game_state = new GameState();
-    history = std::stack<Move>();
-    board->set_game_state(game_state);
-    delete old_state;
+  cb_t cb1 = [&game_state, &board, &history, &my_color, &difficulty](Fl_Widget* w) {
+    auto dialog = new Fl_Double_Window(300, 200, "新游戏");
+
+    auto color_choice = new Fl_Choice(15, 30, 270, 25, "我的颜色");
+    color_choice->add("红色");
+    color_choice->add("绿色");
+    color_choice->align(FL_ALIGN_TOP_LEFT);
+    color_choice->value(my_color == RED ? 0 : 1);
+
+    auto difficulty_choice = new Fl_Choice(15, 75, 270, 25, "难度");
+    difficulty_choice->add("简单");
+    difficulty_choice->add("中等");
+    difficulty_choice->add("困难");
+    difficulty_choice->align(FL_ALIGN_TOP_LEFT);
+    difficulty_choice->value(difficulty);
+
+    auto cancel_button = new Fl_Button(15, 130, 270, 25, "取消");
+    cancel_button->clear_visible_focus();
+    auto ok_button = new Fl_Button(15, 160, 270, 25, "确定");
+    ok_button->clear_visible_focus();
+
+    dialog->end();
+    dialog->set_modal();
+    dialog->show();
+
+    bool confirmed = false;
+
+    cb_t ok_cb = [dialog, &confirmed](Fl_Widget* w) {
+      dialog->hide();
+      confirmed = true;
+    };
+    cb_t cancel_cb = [dialog](Fl_Widget* w) { dialog->hide(); };
+    ok_button->callback(adapter, &ok_cb);
+    cancel_button->callback(adapter, &cancel_cb);
+
+    while (dialog->shown()) {
+      Fl::wait();
+    }
+
+    if (confirmed) {
+      difficulty = difficulty_choice->value();
+      auto old_state = game_state;
+      game_state = new GameState();
+      history = std::stack<Move>();
+      board->set_game_state(game_state);
+      if (color_choice->value() == 0) {
+        my_color = RED;
+        board->user_color(RED);
+      } else {
+        my_color = GREEN;
+        board->user_color(GREEN);
+        board->move({53, 52});
+      }
+      delete old_state;
+    }
+    delete ok_button;
+    delete cancel_button;
+    delete difficulty_choice;
+    delete color_choice;
+    delete dialog;
   };
 
   cb_t cb2 = [&board, btn4](Fl_Widget* w) {
@@ -108,11 +166,11 @@ int run(int argc, char* argv[]) {
     }
   };
 
-  cb_t cb3 = [&board, &game_state, &history](Fl_Widget* w) {
+  cb_t cb3 = [&board, &game_state, &history, &difficulty](Fl_Widget* w) {
     history.push(board->get_user_last_move());
-    std::thread searchThread([&game_state, &board, &history]() {
+    std::thread searchThread([&game_state, &board, &history, &difficulty]() {
       GameState state = *game_state;
-      Move move = state.searchBestMove(10);
+      Move move = state.searchBestMove(COMPUTER_THINK_TIME[difficulty]);
       history.push(move);
       Fl::lock();
       board->move(move);
