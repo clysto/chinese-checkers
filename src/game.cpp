@@ -1,6 +1,7 @@
 #ifdef HAVE_SPDLOG
 #include <spdlog/spdlog.h>
 #endif
+#include <algorithm>
 #include <constants.hpp>
 #include <game.hpp>
 
@@ -116,20 +117,35 @@ std::vector<int> GameState::getBoard() {
 Color GameState::getTurn() const { return turn; }
 
 std::vector<Move> GameState::legalMoves() {
-  std::multiset<Move> moves;
+  std::vector<Move> moves;
+  int min_distance = INF;
+  int max_distance = -INF;
+  int distance = 0;
+  int min_index = 0;
+  int max_index = 0;
   uint128_t from = board[turn];
   SCAN_REVERSE_START(from, src)
   uint128_t to = ADJ_POSITIONS[pos_src] & ~(board[RED] | board[GREEN]);
   jumpMoves(pos_src, to);
   SCAN_REVERSE_START(to, dst)
-  moves.insert({pos_src, pos_dst});
+  distance = PIECE_DISTANCES[pos_dst] - PIECE_DISTANCES[pos_src];
+  if (distance > max_distance) {
+    max_distance = distance;
+    max_index = moves.size();
+  }
+  if (distance < min_distance) {
+    min_distance = distance;
+    min_index = moves.size();
+  }
+  moves.push_back({pos_src, pos_dst});
   SCAN_REVERSE_END(to, dst)
   SCAN_REVERSE_END(from, src)
   if (turn == GREEN) {
-    return {moves.rbegin(), moves.rend()};
+    std::iter_swap(moves.begin() + max_index, moves.begin());
   } else {
-    return {moves.begin(), moves.end()};
+    std::iter_swap(moves.begin() + min_index, moves.begin());
   }
+  return moves;
 }
 
 void GameState::jumpMoves(int src, uint128_t &to) {
