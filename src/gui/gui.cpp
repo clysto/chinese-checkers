@@ -6,10 +6,12 @@
 #include <FL/Fl_PNG_Image.H>
 #include <FL/Fl_SVG_Image.H>
 #include <FL/fl_draw.H>
+#include <spdlog/spdlog.h>
 
 #include <functional>
 #include <game.hpp>
 #include <iostream>
+#include <stack>
 #include <thread>
 
 #include "fonts/RubikMonoOne-Regular.h"
@@ -19,11 +21,11 @@
 #include "widgets/Fl_IconButton.hpp"
 
 namespace App {
-using FunctionCallback = std::function<void(Fl_Widget* w, void* d)>;
+using cb_t = std::function<void(Fl_Widget* w)>;
 
 auto adapter = [](Fl_Widget* w, void* data) {
-  FunctionCallback* func = reinterpret_cast<FunctionCallback*>(data);
-  (*func)(w, NULL);
+  cb_t* func = reinterpret_cast<cb_t*>(data);
+  (*func)(w);
 };
 
 void styled_line(Fl_Box* line) {
@@ -50,6 +52,8 @@ int run(int argc, char* argv[]) {
   int center_y = (Fl::h() - 724) / 2;
   auto window = new Fl_Double_Window(center_x, center_y, 620, 724, "中国跳棋");
   auto gameArea = new Fl_Flex(0, 0, 620, 684);
+  int my_color = RED;
+  std::stack<Move> history;
   auto game_state = new GameState();
   gameArea->box(FL_FLAT_BOX);
   gameArea->color(0xe8b06100);
@@ -57,6 +61,7 @@ int run(int argc, char* argv[]) {
   gameArea->begin();
   auto board = new Fl_ChessBoard(0, 0, 0, 0);
   board->set_game_state(game_state);
+  board->user_color(my_color);
   gameArea->end();
   auto controlArea = new Fl_Flex(0, 684, 620, 40, Fl_Flex::HORIZONTAL);
   controlArea->box(FL_FLAT_BOX);
@@ -78,14 +83,15 @@ int run(int argc, char* argv[]) {
   window->resizable(gameArea);
   window->end();
 
-  FunctionCallback cb1 = [&game_state, &board](Fl_Widget* w, void* d) {
+  cb_t cb1 = [&game_state, &board, &history](Fl_Widget* w) {
     auto old_state = game_state;
     game_state = new GameState();
+    history = std::stack<Move>();
     board->set_game_state(game_state);
     delete old_state;
   };
 
-  FunctionCallback cb2 = [&board, btn4](Fl_Widget* w, void* d) {
+  cb_t cb2 = [&board, btn4](Fl_Widget* w) {
     if (board->number()) {
       board->number(false);
       btn4->label(" 显示编号");
@@ -95,10 +101,19 @@ int run(int argc, char* argv[]) {
     }
   };
 
-  FunctionCallback cb3 = [&board, &game_state](Fl_Widget* w, void* d) {
-    std::thread searchThread([&game_state, &board]() {
+  cb_t cb4 = [&board, &game_state](Fl_Widget* w) {
+    std::string state = game_state->toString();
+    if (state.length() > 0) {
+      Fl::copy(state.c_str(), state.length(), 1);
+    }
+  };
+
+  cb_t cb3 = [&board, &game_state, &history](Fl_Widget* w) {
+    history.push(board->get_user_last_move());
+    std::thread searchThread([&game_state, &board, &history]() {
       GameState state = *game_state;
       Move move = state.searchBestMove(10);
+      history.push(move);
       Fl::lock();
       board->move(move);
       Fl::unlock();
@@ -107,7 +122,22 @@ int run(int argc, char* argv[]) {
     searchThread.detach();
   };
 
+  cb_t cb5 = [&board, &game_state, &my_color, &history](Fl_Widget* w) {
+    if (game_state->turn == my_color && history.size() >= 2) {
+      Move move = history.top();
+      history.pop();
+      game_state->undoMove(move);
+      move = history.top();
+      history.pop();
+      game_state->undoMove(move);
+      board->fill_moves();
+      board->redraw();
+    }
+  };
+
   btn1->callback(adapter, &cb1);
+  btn2->callback(adapter, &cb5);
+  btn3->callback(adapter, &cb4);
   btn4->callback(adapter, &cb2);
   board->callback(adapter, &cb3);
   window->size_range(400, 500, 0, 0);

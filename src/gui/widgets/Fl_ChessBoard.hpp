@@ -26,9 +26,10 @@ class Fl_ChessBoard : public Fl_Widget {
   void fill_moves();
   void number(bool is_show);
   bool number();
-  void color(int my_color);
+  void user_color(int my_color);
   int color();
   void move(Move move);
+  Move get_user_last_move();
 };
 
 #endif

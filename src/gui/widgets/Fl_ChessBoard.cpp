@@ -311,7 +311,7 @@ void Fl_ChessBoard::number(bool is_show) {
 
 bool Fl_ChessBoard::number() { return show_number; }
 
-void Fl_ChessBoard::color(int my_color) {
+void Fl_ChessBoard::user_color(int my_color) {
   this->my_color = my_color;
   fill_moves();
   selected_piece = -1;
@@ -320,3 +320,5 @@ void Fl_ChessBoard::color(int my_color) {
 }
 
 int Fl_ChessBoard::color() { return my_color; }
+
+Move Fl_ChessBoard::get_user_last_move() { return last_move; }
