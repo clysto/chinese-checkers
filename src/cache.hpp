@@ -46,6 +46,11 @@ class lru_cache {
 
   size_t size() const { return _cache_items_map.size(); }
 
+  void clear() {
+    _cache_items_list.clear();
+    _cache_items_map.clear();
+  }
+
  private:
   std::list<key_value_pair_t> _cache_items_list;
   std::unordered_map<key_t, list_iterator_t> _cache_items_map;

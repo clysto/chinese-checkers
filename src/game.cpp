@@ -276,9 +276,7 @@ uint64_t GameState::hash() {
   return zobristHash;
 }
 
-bool GameState::isGameOver() {
-  return board[RED] == INITIAL_GREEN || board[GREEN] == INITIAL_RED;
-}
+bool GameState::isGameOver() { return board[RED] == INITIAL_GREEN || board[GREEN] == INITIAL_RED; }
 
 Move GameState::searchBestMove(int timeLimit) {
   if (round <= 4) {
@@ -290,6 +288,8 @@ Move GameState::searchBestMove(int timeLimit) {
     KILLER_TABLE[i][0] = NULL_MOVE;
     KILLER_TABLE[i][1] = NULL_MOVE;
   }
+  // 初始化置换表
+  HASH_TABLE.clear();
   int depth = 1, eval = -INF, bestEval = -INF;
   Move move = NULL_MOVE, bestMove = NULL_MOVE;
   auto deadline = SECONDS_LATER(timeLimit);
@@ -383,7 +383,7 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
     }
     // 超时检测
     if (NOW >= deadline) {
-      break;
+      return alpha;
     }
   }
   if (value <= alphaOrig) {
