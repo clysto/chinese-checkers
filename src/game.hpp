@@ -65,6 +65,7 @@ const int PIECE_SCORE_TABLE[81] = {
 };
 
 inline bool operator<(const Move &a, const Move &b);
+inline bool operator==(const Move &a, const Move &b);
 
 const std::map<uint128_t, Move> OPENINGS[3] = {
     {},
@@ -103,5 +104,5 @@ class GameState {
   uint64_t hash();
 };
 
-int mtdf(GameState &gameState, int depth, int guess, time_point_t deadline);
-int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_point_t deadline);
+int mtdf(GameState &gameState, int depth, int guess, time_point_t deadline, Move &bestMove);
+int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_point_t deadline, Move &bestMove);

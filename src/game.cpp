@@ -35,7 +35,12 @@ inline bool operator<(const Move &a, const Move &b) {
   return PIECE_DISTANCES[a.dst] - PIECE_DISTANCES[a.src] < PIECE_DISTANCES[b.dst] - PIECE_DISTANCES[b.src];
 }
 
+inline bool operator==(const Move &a, const Move &b) { return a.src == b.src && a.dst == b.dst; }
+
+// 全局置换表
 cache::lru_cache<uint64_t, TranspositionTableEntry> HASH_TABLE(4 * 1024 * 1024);
+// Killer 着法表
+Move KILLER_TABLE[32][2];
 
 GameState::GameState() : board{0, INITIAL_RED, INITIAL_GREEN}, turn(RED), round(1), zobristHash(0) { hash(); }
 
@@ -140,10 +145,12 @@ std::vector<Move> GameState::legalMoves() {
   moves.push_back({pos_src, pos_dst});
   SCAN_REVERSE_END(to, dst)
   SCAN_REVERSE_END(from, src)
+  // 这里把最大距离的着法放到最后，以便在 Alpha-Beta 剪枝时能够先搜索最大距离的着法
+  // 放在最后的着法会被优先搜索
   if (turn == GREEN) {
-    std::iter_swap(moves.begin() + max_index, moves.begin());
+    std::iter_swap(moves.begin() + max_index, moves.end() - 1);
   } else {
-    std::iter_swap(moves.begin() + min_index, moves.begin());
+    std::iter_swap(moves.begin() + min_index, moves.end() - 1);
   }
   return moves;
 }
@@ -260,15 +267,19 @@ Move GameState::searchBestMove(int timeLimit) {
     // 开局库
     return OPENINGS[turn].at(board[turn]);
   }
+  // 初始化 Killer 着法表
+  for (int i = 0; i < 32; i++) {
+    KILLER_TABLE[i][0] = NULL_MOVE;
+    KILLER_TABLE[i][1] = NULL_MOVE;
+  }
   int depth = 1, eval = -INF, bestEval = -INF;
   Move move = NULL_MOVE, bestMove = NULL_MOVE;
   auto deadline = SECONDS_LATER(timeLimit);
   while (depth < 100) {
     bestEval = eval;
     bestMove = move;
-    eval = mtdf(*this, depth, eval, deadline);
+    eval = mtdf(*this, depth, eval, deadline, move);
     uint64_t h = hash();
-    move = HASH_TABLE.get(h).bestMove;
 #ifdef HAVE_SPDLOG
     spdlog::info("complete search depth: {}, score: {}, move: {} {}", depth, eval, move.src, move.dst);
 #endif
@@ -288,24 +299,24 @@ Move GameState::searchBestMove(int timeLimit) {
   return bestMove;
 }
 
-int mtdf(GameState &gameState, int depth, int guess, time_point_t deadline) {
+int mtdf(GameState &gameState, int depth, int guess, time_point_t deadline, Move &bestMove) {
   int beta;
   int upperbound = INF;
   int lowerbound = -INF;
   int score = guess;
   do {
     beta = (score == lowerbound ? score + 1 : score);
-    score = alphaBetaSearch(gameState, depth, beta - 1, beta, deadline);
+    score = alphaBetaSearch(gameState, depth, beta - 1, beta, deadline, bestMove);
     (score < beta ? upperbound : lowerbound) = score;
   } while (lowerbound < upperbound);
   return score;
 }
 
-int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_point_t deadline) {
+int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_point_t deadline, Move &bestMove) {
   // 查询置换表
   uint64_t hash = gameState.hash();
   int alphaOrig = alpha;
-  Move bestMove = NULL_MOVE;
+  bestMove = NULL_MOVE;
 
   if (HASH_TABLE.exists(hash)) {
     auto result = HASH_TABLE.get(hash);
@@ -332,13 +343,25 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
   }
 
   HashFlag flag;
+  Move opponentMove, move;
   auto moves = gameState.legalMoves();
   int value = -INF;
+  // 搜索 Killer 着法
+  for (int i = 0; i < 2; i++) {
+    if (KILLER_TABLE[depth][i].src >= 0) {
+      // 判断 Killer 着法是否合法
+      if (std::find(moves.begin(), moves.end(), KILLER_TABLE[depth][i]) != moves.end()) {
+        moves.push_back(KILLER_TABLE[depth][i]);
+      }
+    }
+  }
   // 优先搜索历史最佳着法
   if (bestMove.src >= 0) {
-    moves.insert(moves.begin(), bestMove);
+    moves.push_back(bestMove);
   }
-  for (Move move : moves) {
+  // reverse search moves
+  for (auto it = moves.rbegin(); it != moves.rend(); it++) {
+    move = *it;
     // 跳过向后走两步及其以上的着法
     if (gameState.getTurn() == GREEN && PIECE_DISTANCES[move.dst] - PIECE_DISTANCES[move.src] <= -2) {
       continue;
@@ -346,7 +369,7 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
       continue;
     }
     gameState.applyMove(move);
-    int current = -alphaBetaSearch(gameState, depth - 1, -beta, -alpha, deadline);
+    int current = -alphaBetaSearch(gameState, depth - 1, -beta, -alpha, deadline, opponentMove);
     gameState.undoMove(move);
     if (current > value) {
       value = current;
@@ -354,7 +377,9 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
     }
     alpha = std::max(alpha, value);
     if (alpha >= beta) {
-      // 发生截断
+      // 发生 Beta 截断
+      KILLER_TABLE[depth][1] = KILLER_TABLE[depth][0];
+      KILLER_TABLE[depth][0] = move;
       break;
     }
     // 超时检测
