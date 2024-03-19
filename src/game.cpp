@@ -277,21 +277,7 @@ uint64_t GameState::hash() {
 }
 
 bool GameState::isGameOver() {
-  bool redWin = true;
-  bool greenWin = true;
-  uint128_t red = board[RED];
-  uint128_t green = board[GREEN];
-  SCAN_REVERSE_START(red, src)
-  if (PIECE_DISTANCES[pos_src] > 3) {
-    redWin = false;
-  }
-  SCAN_REVERSE_END(red, src)
-  SCAN_REVERSE_START(green, src)
-  if (PIECE_DISTANCES[pos_src] < 13) {
-    greenWin = false;
-  }
-  SCAN_REVERSE_END(green, src)
-  return redWin || greenWin;
+  return board[RED] == INITIAL_GREEN || board[GREEN] == INITIAL_RED;
 }
 
 Move GameState::searchBestMove(int timeLimit) {
