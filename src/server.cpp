@@ -2,6 +2,9 @@
 #include <spdlog/spdlog.h>
 
 #include <game.hpp>
+#include <mutex>
+
+std::mutex mtx;
 
 int main(int argc, char* argv[]) {
   using namespace httplib;
@@ -23,6 +26,7 @@ int main(int argc, char* argv[]) {
   spdlog::info("Server running at http://{}:{}", host, port);
 
   svr.Get("/search", [](const Request& req, Response& res) {
+    std::lock_guard<std::mutex> guard(mtx);
     std::string state = req.get_param_value("state");
     std::string time = req.get_param_value("time");
     int searchTime = 1;
