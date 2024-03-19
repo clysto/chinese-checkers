@@ -30,14 +30,6 @@ struct Move {
   int dst;
 };
 
-struct TranspositionTableEntry {
-  uint64_t hash;
-  int value;
-  int depth;
-  HashFlag flag;
-  Move bestMove;
-};
-
 const uint128_t BOARD_MASK = ((uint128_t)0x1ffff << 64) | 0xffffffffffffffff;
 const uint128_t INITIAL_RED = ((uint128_t)0x1e0e0 << 64) | 0x6020000000000000;
 const uint128_t INITIAL_GREEN = 0x80c0e0f;

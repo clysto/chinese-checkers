@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <constants.hpp>
 #include <game.hpp>
+#include <transtable.hpp>
 
 inline int bitlen_u128(uint128_t u) {
   if (u == 0) {
@@ -38,7 +39,7 @@ inline bool operator<(const Move &a, const Move &b) {
 inline bool operator==(const Move &a, const Move &b) { return a.src == b.src && a.dst == b.dst; }
 
 // 全局置换表
-cache::lru_cache<uint64_t, TranspositionTableEntry> HASH_TABLE(4 * 1024 * 1024);
+TranspositionTable HASH_TABLE;
 // Killer 着法表
 Move KILLER_TABLE[32][2];
 
