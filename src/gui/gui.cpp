@@ -87,9 +87,10 @@ int run(int argc, char* argv[]) {
   window->resizable(gameArea);
   window->end();
 
-  cb_t cb1 = [&game_state, &board, &history, &my_color, &difficulty](Fl_Widget* w) {
-    auto dialog = new Fl_Double_Window(300, 200, "新游戏");
-
+  cb_t cb1 = [window, &game_state, &board, &history, &my_color, &difficulty](Fl_Widget* w) {
+    int center_x = (window->w() - 300) / 2 + window->x();
+    int center_y = (window->h() - 200) / 2 + window->y();
+    auto dialog = new Fl_Double_Window(center_x, center_y, 300, 200, "新游戏");
     auto color_choice = new Fl_Choice(15, 30, 270, 25, "我的颜色");
     color_choice->add("红色");
     color_choice->add("绿色");

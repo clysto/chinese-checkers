@@ -283,7 +283,7 @@ void Fl_ChessBoard::set_game_state(GameState* game_state) {
 }
 
 void Fl_ChessBoard::handle_circle_click(int index) {
-  if (game_state == nullptr) return;
+  if (game_state == nullptr || game_state->isGameOver()) return;
   if ((game_state->board[game_state->turn] >> index) & 1 && my_color == game_state->turn) {
     selected_piece = index;
     redraw();
