@@ -36,6 +36,24 @@ void styled_line(Fl_Box* line) {
   line->color(0x457dd900);
 }
 
+void style_button(Fl_Button* btn) {
+  btn->box(FL_RFLAT_BOX);
+  btn->down_box(FL_RFLAT_BOX);
+  btn->color(0x2060c800);
+  btn->down_color(0x174faa00);
+  btn->labelcolor(FL_WHITE);
+  btn->labelsize(14);
+  btn->labelfont(FL_HELVETICA_BOLD);
+  btn->labeltype(FL_NORMAL_LABEL);
+  btn->align(FL_ALIGN_CENTER | FL_ALIGN_INSIDE);
+  btn->clear_visible_focus();
+}
+
+void styled_input(Fl_Choice *input) {
+  input->box(FL_FLAT_BOX);
+  input->clear_visible_focus();
+}
+
 void init() {
   Fl::lock();
   Fl_load_memory_font("RubicMonoOne.ttf", (const char*)RubikMonoOne_Regular_ttf, RubikMonoOne_Regular_ttf_len);
@@ -92,12 +110,14 @@ int run(int argc, char* argv[]) {
     int center_y = (window->h() - 200) / 2 + window->y();
     auto dialog = new Fl_Double_Window(center_x, center_y, 300, 200, "新游戏");
     auto color_choice = new Fl_Choice(15, 30, 270, 25, "我的颜色");
+    styled_input(color_choice);
     color_choice->add("红色");
     color_choice->add("绿色");
     color_choice->align(FL_ALIGN_TOP_LEFT);
     color_choice->value(my_color == RED ? 0 : 1);
 
     auto difficulty_choice = new Fl_Choice(15, 75, 270, 25, "难度");
+    styled_input(difficulty_choice);
     difficulty_choice->add("简单");
     difficulty_choice->add("中等");
     difficulty_choice->add("困难");
@@ -105,8 +125,10 @@ int run(int argc, char* argv[]) {
     difficulty_choice->value(difficulty);
 
     auto cancel_button = new Fl_Button(15, 130, 270, 25, "取消");
+    style_button(cancel_button);
     cancel_button->clear_visible_focus();
     auto ok_button = new Fl_Button(15, 160, 270, 25, "确定");
+    style_button(ok_button);
     ok_button->clear_visible_focus();
 
     dialog->end();

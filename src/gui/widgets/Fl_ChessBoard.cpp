@@ -236,6 +236,7 @@ void Fl_ChessBoard::draw() {
     double cy = FAKE_CIRCLE_POSITIONS[i][1] * scale + dy;
     circle(cx, cy, radius, Fl_Color(0x977d5a00));
   }
+  fl_line_style(0);
 }
 
 int Fl_ChessBoard::handle(int event) {
