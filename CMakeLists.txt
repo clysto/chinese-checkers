@@ -9,6 +9,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(spdlog REQUIRED)
 find_package(FLTK CONFIG REQUIRED)
 
+if(MINGW)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -static")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive")
+endif()
+
 add_executable(chinesecheckers_server src/server.cpp src/httplib.h src/game.cpp src/game.hpp src/transtable.cpp src/transtable.hpp)
 target_compile_definitions(chinesecheckers_server PUBLIC -DHAVE_SPDLOG)
 target_link_libraries(chinesecheckers_server spdlog::spdlog)
@@ -25,7 +30,7 @@ set(APP_SOURCES
     src/gui/utils.hpp
     src/game.cpp
     src/game.hpp
-    src/transtable.cpp 
+    src/transtable.cpp
     src/transtable.hpp
     src/gui/widgets/Fl_IconButton.cpp
     src/gui/widgets/Fl_IconButton.hpp
