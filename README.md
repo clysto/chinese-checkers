@@ -12,5 +12,5 @@
 - [x] Transposition table
 - [x] Iterative deepening
 - [x] MTD(f) search
-- [ ] Opening book
-- [ ] Null-Move Forward Pruning
+- [x] Opening book
+- [x] Null-Move Forward Pruning

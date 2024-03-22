@@ -5,6 +5,10 @@
 #include <sstream>
 #include <vector>
 
+inline bool operator==(const BookEntry& a, const BookEntry& b) {
+  return a.hash == b.hash && a.src == b.src && a.dst == b.dst;
+}
+
 int main(int argc, char* argv[]) {
   if (argc != 3) {
     std::cerr << "Usage: " << argv[0] << " <input.txt> <output.dat>" << std::endl;
@@ -33,6 +37,9 @@ int main(int argc, char* argv[]) {
   }
 
   std::sort(entries.begin(), entries.end());
+
+  // 去重
+  entries.erase(std::unique(entries.begin(), entries.end()), entries.end());
 
   for (const auto& entry : entries) {
     std::cout << "Adding entry: " << entry.src << " -> " << entry.dst << std::endl;
