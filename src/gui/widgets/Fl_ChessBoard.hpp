@@ -1,6 +1,7 @@
 #ifndef Fl_ChessBoard_H
 #define Fl_ChessBoard_H
 
+#include <FL/Fl_Timer.H>
 #include <FL/Fl_Widget.H>
 
 #include <game.hpp>
@@ -18,6 +19,7 @@ class Fl_ChessBoard : public Fl_Widget {
   int my_color;
 
  public:
+  bool is_tick;
   Fl_ChessBoard(int x, int y, int w, int h, int my_color = RED);
   void draw() override;
   virtual int handle(int event) override;
@@ -29,6 +31,7 @@ class Fl_ChessBoard : public Fl_Widget {
   void user_color(int my_color);
   int color();
   void move(Move move);
+  static void tick(void *data);
   Move get_user_last_move();
 };
 

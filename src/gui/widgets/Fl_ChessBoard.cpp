@@ -139,9 +139,20 @@ Fl_ChessBoard::Fl_ChessBoard(int x, int y, int w, int h, int my_color)
       selected_piece(-1),
       last_move{-1, -1},
       show_number(false),
-      my_color(my_color) {}
+      my_color(my_color),
+      is_tick(true) {
+  Fl::add_timeout(0.6, Fl_ChessBoard::tick, this);
+}
+
+void Fl_ChessBoard::tick(void* data) {
+  auto board = reinterpret_cast<Fl_ChessBoard*>(data);
+  board->is_tick = !board->is_tick;
+  board->redraw();
+  Fl::repeat_timeout(0.6, Fl_ChessBoard::tick, data);
+}
 
 void Fl_ChessBoard::draw() {
+  fl_rectf(x(), y(), w(), h(), 0xe8b06100);
   double radius = 19;
   dx = x();
   dy = y();
@@ -236,6 +247,19 @@ void Fl_ChessBoard::draw() {
     double cy = FAKE_CIRCLE_POSITIONS[i][1] * scale + dy;
     circle(cx, cy, radius, Fl_Color(0x977d5a00));
   }
+
+  double cx, cy;
+  if (game_state != nullptr && !game_state->isGameOver() && is_tick) {
+    if (game_state->turn == my_color) {
+      cx = CIRCLE_POSITIONS[80][0] * scale + dx + 4 * radius;
+      cy = CIRCLE_POSITIONS[80][1] * scale + dy;
+    } else {
+      cx = CIRCLE_POSITIONS[0][0] * scale + dx - 4 * radius;
+      cy = CIRCLE_POSITIONS[0][1] * scale + dy;
+    }
+    circle(cx, cy, radius * 0.75, Fl_Color(0x4b310c00));
+  }
+
   fl_line_style(0);
 }
 
@@ -311,6 +335,9 @@ void Fl_ChessBoard::move(Move move) {
   if (my_color != game_state->turn) {
     do_callback();
   }
+  is_tick = false;
+  Fl::remove_timeout(Fl_ChessBoard::tick, this);
+  Fl::add_timeout(0.6, Fl_ChessBoard::tick, this);
   redraw();
 }
 

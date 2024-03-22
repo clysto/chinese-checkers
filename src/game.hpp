@@ -4,6 +4,7 @@
 #include <cache.hpp>
 #include <chrono>
 #include <climits>
+#include <fstream>
 #include <list>
 #include <map>
 #include <set>
@@ -26,6 +27,12 @@ enum HashFlag {
 };
 
 struct Move {
+  int src;
+  int dst;
+};
+
+struct BookEntry {
+  uint64_t hash;
   int src;
   int dst;
 };
@@ -58,6 +65,7 @@ const int PIECE_SCORE_TABLE[81] = {
 
 inline bool operator<(const Move &a, const Move &b);
 inline bool operator==(const Move &a, const Move &b);
+inline bool operator<(const BookEntry &a, const BookEntry &b) { return a.hash < b.hash; }
 
 const std::map<uint128_t, Move> OPENINGS[3] = {
     {},
@@ -90,6 +98,8 @@ class GameState {
   void jumpMoves(int src, uint128_t &to);
   void applyMove(Move move);
   void undoMove(Move move);
+  void applyNullMove();
+  void undoNullMove();
   int evaluate();
   bool isGameOver();
   Move searchBestMove(int timeLimit);
@@ -99,3 +109,4 @@ class GameState {
 
 int mtdf(GameState &gameState, int depth, int guess, time_point_t deadline, Move &bestMove);
 int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_point_t deadline, Move &bestMove);
+Move searchBook(uint64_t hash);

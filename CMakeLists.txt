@@ -24,6 +24,10 @@ target_compile_definitions(chinesecheckers_cli PUBLIC -DHAVE_SPDLOG)
 target_link_libraries(chinesecheckers_cli spdlog::spdlog)
 target_include_directories(chinesecheckers_cli PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
+add_executable(bookmaker src/book/bookmaker.cpp src/game.cpp src/game.hpp src/transtable.cpp src/transtable.hpp)
+target_link_libraries(bookmaker spdlog::spdlog)
+target_include_directories(bookmaker PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
 set(APP_SOURCES
     src/gui/gui.cpp
     src/gui/utils.cpp

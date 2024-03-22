@@ -2,9 +2,13 @@
 #include <spdlog/spdlog.h>
 #endif
 #include <algorithm>
+#include <book.hpp>
 #include <constants.hpp>
 #include <game.hpp>
+#include <random>
 #include <transtable.hpp>
+
+const int NULL_MOVE_R = 2;
 
 inline int bitlen_u128(uint128_t u) {
   if (u == 0) {
@@ -42,6 +46,8 @@ inline bool operator==(const Move &a, const Move &b) { return a.src == b.src && 
 TranspositionTable HASH_TABLE;
 // Killer 着法表
 Move KILLER_TABLE[32][2];
+// 开局库
+std::vector<BookEntry> BOOK;
 
 GameState::GameState() : board{0, INITIAL_RED, INITIAL_GREEN}, turn(RED), round(1), zobristHash(0) { hash(); }
 
@@ -214,6 +220,16 @@ void GameState::applyMove(Move move) {
   }
 }
 
+void GameState::applyNullMove() {
+  turn = turn == Color::RED ? Color::GREEN : Color::RED;
+  if (zobristHash != 0) {
+    zobristHash ^= 0xc503204d9e521ac5ULL;
+  }
+  if (turn == RED) {
+    round++;
+  }
+}
+
 void GameState::undoMove(Move move) {
   turn = turn == Color::RED ? Color::GREEN : Color::RED;
   board[turn] ^= (uint128_t)1 << move.dst;
@@ -224,6 +240,16 @@ void GameState::undoMove(Move move) {
   if (zobristHash != 0) {
     zobristHash ^= ZOBRIST_TABLE[move.src][turn];
     zobristHash ^= ZOBRIST_TABLE[move.dst][turn];
+    zobristHash ^= 0xc503204d9e521ac5ULL;
+  }
+}
+
+void GameState::undoNullMove() {
+  turn = turn == Color::RED ? Color::GREEN : Color::RED;
+  if (turn == RED) {
+    round--;
+  }
+  if (zobristHash != 0) {
     zobristHash ^= 0xc503204d9e521ac5ULL;
   }
 }
@@ -280,9 +306,13 @@ uint64_t GameState::hash() {
 bool GameState::isGameOver() { return board[RED] == INITIAL_GREEN || board[GREEN] == INITIAL_RED; }
 
 Move GameState::searchBestMove(int timeLimit) {
-  if (round <= 4) {
-    // 开局库
-    return OPENINGS[turn].at(board[turn]);
+  // 搜索开局库
+  auto m = searchBook(hash());
+  if (m.src >= 0) {
+#ifdef HAVE_SPDLOG
+    spdlog::info("book move: {} {}", m.src, m.dst);
+#endif
+    return m;
   }
   // 初始化 Killer 着法表
   for (int i = 0; i < 32; i++) {
@@ -297,7 +327,8 @@ Move GameState::searchBestMove(int timeLimit) {
   while (depth < 100) {
     bestEval = eval;
     bestMove = move;
-    eval = mtdf(*this, depth, eval, deadline, move);
+    // eval = mtdf(*this, depth, eval, deadline, move);
+    eval = alphaBetaSearch(*this, depth, -INF, INF, deadline, move);
     uint64_t h = hash();
 #ifdef HAVE_SPDLOG
     spdlog::info("complete search depth: {}, score: {}, move: {} {}", depth, eval, move.src, move.dst);
@@ -365,11 +396,32 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
   Move opponentMove, move;
   auto moves = gameState.sortedLegalMoves(depth, bestMove);
   int value = -INF;
+  int index = -1;
+
+  // 空着裁剪
+  if (depth - 1 - NULL_MOVE_R > 0) {
+    gameState.applyNullMove();
+    int current = -alphaBetaSearch(gameState, depth - 1 - NULL_MOVE_R, -beta, -beta + 1, deadline, opponentMove);
+    gameState.undoNullMove();
+    if (current >= beta) {
+      return current;
+    }
+  }
+
   // reverse search moves
   for (auto it = moves.rbegin(); it != moves.rend(); it++) {
+    index++;
     move = *it;
     gameState.applyMove(move);
-    int current = -alphaBetaSearch(gameState, depth - 1, -beta, -alpha, deadline, opponentMove);
+    int current;
+    if (index > 1) {
+      current = -alphaBetaSearch(gameState, depth - 1, -alpha - 1, -alpha, deadline, opponentMove);
+      if (current > alpha && current < beta) {
+        current = -alphaBetaSearch(gameState, depth - 1, -beta, -alpha, deadline, opponentMove);
+      }
+    } else {
+      current = -alphaBetaSearch(gameState, depth - 1, -beta, -alpha, deadline, opponentMove);
+    }
     gameState.undoMove(move);
     if (current > value) {
       value = current;
@@ -384,7 +436,7 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
     }
     // 超时检测
     if (NOW >= deadline) {
-      return alpha;
+      return value;
     }
   }
   if (value <= alphaOrig) {
@@ -395,5 +447,36 @@ int alphaBetaSearch(GameState &gameState, int depth, int alpha, int beta, time_p
     flag = HASH_EXACT;
   }
   HASH_TABLE.put(hash, {hash, value, depth, flag, bestMove});
-  return alpha;
+  return value;
+}
+
+Move searchBook(uint64_t hash) {
+  if (BOOK.empty()) {
+#ifdef HAVE_SPDLOG
+    spdlog::info("loading opening book");
+#endif
+    int count = book_dat_len / sizeof(BookEntry);
+    BookEntry entry;
+    for (int i = 0; i < count; i++) {
+      memcpy(&entry, book_dat + i * sizeof(BookEntry), sizeof(BookEntry));
+      BOOK.push_back(entry);
+    }
+  }
+  BookEntry entry = {hash, 0, 0};
+  auto it = std::lower_bound(BOOK.begin(), BOOK.end(), entry);
+  std::vector<BookEntry> match;
+  if (it != BOOK.end()) {
+    while (it->hash == hash) {
+      match.push_back(*it);
+      it++;
+    }
+  }
+
+  // 随机选择一个着法
+  if (!match.empty()) {
+    int i = std::rand() % match.size();
+    return {match[i].src, match[i].dst};
+  }
+
+  return NULL_MOVE;
 }
