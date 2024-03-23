@@ -1,14 +1,32 @@
+function saveState(board, myColor, lastMove) {
+  localStorage.setItem('board', board);
+  localStorage.setItem('color', myColor);
+  localStorage.setItem('lastMove', JSON.stringify(lastMove));
+}
+
+function restoreState() {
+  const board = localStorage.getItem('board');
+  if (!board) {
+    return null;
+  }
+  const color = parseInt(localStorage.getItem('color'));
+  const lastMove = JSON.parse(localStorage.getItem('lastMove'));
+  const computerThinkTime = parseInt(localStorage.getItem('mode'));
+  return { board, color, lastMove, computerThinkTime };
+}
+
 function App() {
+  const savedState = restoreState();
   const pieceClasses = ['empty', 'red', 'green'];
   // State
-  let gameState = new GameState();
+  let gameState = savedState ? new GameState(savedState.board) : new GameState();
   let moves = gameState.legalMoves();
-  let lastMove = null;
+  let lastMove = savedState ? savedState.lastMove : null;
   let srcPiece = -1;
   let windowWidth = window.innerWidth;
-  let myColor = RED;
+  let myColor = savedState ? savedState.color : RED;
   let showNumber = false;
-  let computerThinkTime = 10;
+  let computerThinkTime = savedState ? savedState.computerThinkTime : 10;
   let showDialog = false;
   let countDown = 0;
   let gameId = 0;
@@ -17,7 +35,14 @@ function App() {
   let userSelectColor = RED;
   let userSelectMode = 10;
 
-  localStorage.setItem('color', myColor);
+  const worker = new Worker('worker.js');
+
+  // Init
+  if (gameState.turn != myColor) {
+    countDown = computerThinkTime;
+    // 等待 worker 初始化
+    setTimeout(() => computerMove(), 200);
+  }
 
   // Event handlers
   const handlePieceClick = (p) => {
@@ -35,7 +60,7 @@ function App() {
       lastMove = [srcPiece, p];
       srcPiece = -1;
       moves = gameState.legalMoves();
-      localStorage.setItem('board', gameState.toString());
+      saveState(gameState.toString(), myColor, lastMove);
       computerMove();
     }
   };
@@ -54,28 +79,18 @@ function App() {
       countDown--;
       m.redraw();
     }, 1000);
-    fetch(
-      'http://localhost:1234/search?' + new URLSearchParams({ state: gameState.toString(), time: computerThinkTime })
-    )
-      .then((res) => res.text())
-      .then((data) => {
-        if (gameId !== sessionId) {
-          return;
-        }
-        const [src, dst] = data.split(' ').map(Number);
-        gameState.applyMove(src, dst);
-        lastMove = [src, dst];
-        moves = gameState.legalMoves();
-        if (computerThinkTime - countDown < 1) {
-          setTimeout(() => {
-            clearInterval(t);
-            m.redraw();
-          }, 200);
-        } else {
-          clearInterval(t);
-          m.redraw();
-        }
-      });
+    worker.postMessage({ state: gameState.toString(), time: computerThinkTime });
+    worker.onmessage = (e) => {
+      if (gameId !== sessionId) {
+        return;
+      }
+      const { src, dst } = e.data;
+      gameState.applyMove(src, dst);
+      lastMove = [src, dst];
+      moves = gameState.legalMoves();
+      saveState(gameState.toString(), myColor, lastMove);
+      m.redraw();
+    };
   };
 
   const handleRestart = () => {
@@ -89,10 +104,12 @@ function App() {
     myColor = parseInt(userSelectColor);
     localStorage.setItem('color', myColor);
     computerThinkTime = parseInt(userSelectMode);
+    localStorage.setItem('mode', computerThinkTime);
     if (myColor === GREEN) {
       computerMove();
     }
     showDialog = false;
+    saveState(gameState.toString(), myColor, lastMove);
   };
 
   const handleDialogToggle = () => {
@@ -132,18 +149,6 @@ function App() {
   });
 
   return {
-    oninit() {
-      const board = localStorage.getItem('board');
-      const color = parseInt(localStorage.getItem('color'));
-      console.log('board', color);
-      if (board && color) {
-        gameState = new GameState(board);
-        myColor = parseInt(color);
-        if (gameState.turn != myColor) {
-          computerMove();
-        }
-      }
-    },
     view() {
       return m('div', { id: 'app' }, [
         m('div', { class: 'info-area' }, [
